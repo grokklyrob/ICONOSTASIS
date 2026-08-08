@@ -6,7 +6,7 @@ Working codename: **ICONOSTASIS** (the screen of icons through which the sanctua
 | | |
 |---|---|
 | **Doc type** | Product Requirements + Technical Architecture (SWE-agnostic, model-agnostic) |
-| **Status** | Draft v0.2 |
+| **Status** | Draft v0.3 |
 | **Owner** | Manalive Tech / the Bitmonk |
 | **Audience** | Any engineer or agentic coding system implementing the product; no prior context assumed |
 | **Constellation** | Sibling to 40days.ai; the seraph point cloud (`seraph.bin`, 288k pts) is a canonical first-party asset |
@@ -15,8 +15,23 @@ Working codename: **ICONOSTASIS** (the screen of icons through which the sanctua
 
 | Version | Date | Notes |
 |---|---|---|
-| **v0.2** | 2026-08-07 | Advisor amendment set AMD-01…AMD-20 applied. See table below. |
+| **v0.3** | 2026-08-08 | Spec-audit amendment set AMD-21…AMD-29 applied. See table below. |
+| v0.2 | 2026-08-07 | Advisor amendment set AMD-01…AMD-20 applied. |
 | v0.1 | 2026-08-07 | Initial draft. |
+
+**v0.3 amendments (keyed to AMD ids; from reviews/spec-audit-v0.2.md):**
+
+| ID | Sections | Summary |
+|---|---|---|
+| AMD-21 | §13.1 | Named load paths; `file://` opaque-origin constraint; no silent sibling `.icx` fetch; `user-picked-icx` first-class |
+| AMD-22 | §18 M3 | Demo = feasibility matrix (A)(B)(C) |
+| AMD-23 | §12.3 | Taint gate: prefix + Vault equality; digests exempt; entropy advisory only |
+| AMD-24 | §16.4 | Flash limiter = WCAG 2.3.1-oriented damper; approximation documented |
+| AMD-25 | §8.1, §8.4, §19 | `EXT_color_buffer_float` hard probe; LDR fallback; HDR\|LDR goldens |
+| AMD-26 | §16.4 | Caption a11y = DOM/`aria-live`; WebVTT for video export only |
+| AMD-27 | §12.2 | Stable paths + mandatory content hash; drop content-hash filenames |
+| AMD-28 | §14.3, §18 M4, §20 | Blossom-only media; client NIP-94 optional; byte-fidelity + client hash verify; NIP-96 deferred to §20 |
+| AMD-29 | §9.3, §9.1.3 | Anthropic browser-direct conditional; live probe selects routing |
 
 **v0.2 amendments (keyed to AMD ids):**
 
@@ -319,7 +334,8 @@ interface OperatorDef {
 
 - **Reference:** Three.js `WebGPURenderer` with automatic WebGL2 fallback. Prefer TSL (Three Shading Language) shared graphs, but **WebGL2 is the acceptance backend** (floor). Golden-frame plates are **per backend** (`webgl2` required in CI; `webgpu` optional where available). Techniques known to fork or need dual paths — **godrays, feedback, custom SDF/GLSL strings, point size attenuation, HDR intermediate formats** — must document backend differences in operator notes; visual parity is best-effort, not assumed. If the implementing team chooses a different library, it must match this capability set.
 - Scene composition is owned by the graph: `GEO` ops emit geometry handles, `MAT` ops emit materials, a `GEO/Assemble` op binds them into scene nodes; the `OUT/Render` op owns camera + render targets.
-- **Required capabilities:** instanced rendering; point sprites with per-point color/size; additive + normal blending; HDR render targets; multi-pass post chain; render-to-texture for the `FX/Feedback` op; logarithmic depth optional.
+- **Required capabilities:** instanced rendering; point sprites with per-point color/size; additive + normal blending; multi-pass post chain; render-to-texture for the `FX/Feedback` op; logarithmic depth optional.
+- **HDR intermediates (probe-gated, not assumed of core WebGL2):** float (or half-float) color-renderable targets require a successful hard probe for `EXT_color_buffer_float` (WebGL2) or an equivalent half-float color-buffer extension, or WebGPU float/half targets when WebGPU is active. **Core WebGL2 alone does not mandate float color-renderability.** When the float color-buffer probe fails, the engine **must** use a documented **LDR multi-pass fallback** (e.g. RGBA8 intermediates) with a quality drop; Radiance Stack and golden plates must remain runnable on that path. “HDR render targets” are never a silent hard requirement on the WebGL2 acceptance floor without the extension probe.
 
 ### 8.2 Post-processing chain (the "Radiance Stack")
 
@@ -342,7 +358,7 @@ Fixed-order, individually-bypassable passes, each an `FX` operator with modulata
 
 ### 8.4 Device tiering
 
-At startup (and on explicit re-probe), a **measured capability probe** assigns `tier ∈ {cathedral, chapel, wayside}` from achieved frame time and feature support while rendering a standard probe scene — not from marketing GPU labels. WebGPU vs WebGL2 is an input to the probe, not a sufficient classifier. “Discrete GPU” heuristics are non-normative hints only.
+At startup (and on explicit re-probe), a **measured capability probe** assigns `tier ∈ {cathedral, chapel, wayside}` from achieved frame time and feature support while rendering a standard probe scene — not from marketing GPU labels. WebGPU vs WebGL2 is an input to the probe, not a sufficient classifier. Float/half-float color-buffer support (`EXT_color_buffer_float` or equivalent) is a **hard probe input** that selects HDR intermediates vs LDR multi-pass fallback; it does not by itself assign tier. “Discrete GPU” heuristics are non-normative hints only.
 
 | Tier | Typical signals (non-normative) | Scene-total point budget | Post | Frame target |
 |---|---|---|---|---|
@@ -360,7 +376,7 @@ Budgets are **scene-total** across all point and particle emitters. A **runtime 
 
 1. **Capability contracts, not vendors.** GEN operators declare what they need (`text.stream`, `image.generate`, `speech.synthesize`); the user maps capabilities to configured providers. Swapping Anthropic→local Ollama→OpenRouter changes zero graph wiring.
 2. **Keys are radioactive.** They live in the Key Vault (§15.1), are injected into requests at call time, and are structurally unreachable from serialization, export, and publish code paths.
-3. **User-sovereign egress (no first-party proxy).** Calls never transit Manalive-hosted infrastructure. Per configured provider, routing is `direct` (browser → provider TLS) or `helper` (browser → user-run Local Helper → provider). Default is `direct` only when the adapter declares browser compatibility and a probe succeeds; otherwise default is `helper`. No hosted middleman exists in any configuration.
+3. **User-sovereign egress (no first-party proxy).** Calls never transit Manalive-hosted infrastructure. Per configured provider, routing is `direct` (browser → provider TLS) or `helper` (browser → user-run Local Helper → provider). Default is `direct` only when a **live probe** of a real CORS preflight/response (or equivalent browser-access check) **succeeds for that configured endpoint/org**; otherwise default is `helper`. **Static adapter metadata alone never selects `direct`.** No hosted middleman exists in any configuration.
 4. **Everything is provenance-stamped.** Every generated artifact records provider-class, model id, prompt, params, seed (if any), and timestamp into `provenance.json` (§12.4). No key material, ever.
 
 ### 9.2 Capability contracts
@@ -390,7 +406,7 @@ interface ProviderAdapter {
 
 | Adapter | Covers | Notes |
 |---|---|---|
-| `anthropic` | Anthropic Messages API | Supports the documented browser-direct access header; streaming via SSE. |
+| `anthropic` | Anthropic Messages API | Streaming via SSE. **Browser-direct is conditional:** supported only when Anthropic’s documented browser-access path is available for the user’s org. **Unavailable** under Zero Data Retention (ZDR) arrangements and any org configuration where CORS/browser access is disabled (Anthropic documents that ZDR orgs must use a backend proxy). For those orgs, routing **must** use the Local Helper (or fail closed with a clear error) — not silent direct. Adapter metadata must not claim unconditional browser CORS. |
 | `openai-compat` | Any OpenAI-compatible endpoint: OpenAI, OpenRouter, Groq, Mistral, Together, **local Ollama / LM Studio / llama.cpp servers** | One adapter, user-set `baseUrl` + `model`. This is the workhorse — it makes "model-agnostic" real, including fully-offline local models. |
 | `google` | Gemini API | Text + image. |
 | `custom-http` | Anything else | Declarative descriptor JSON: endpoint, method, header template, request template with `{{prompt}}` slots, JSONPath response extractor. Lets users wire niche image/TTS providers without code. |
@@ -511,15 +527,23 @@ myexperience.icx
 │   ├─ seraph.bin
 │   ├─ icon_station3.png
 │   ├─ antiphon_2.ogg
-│   └─ …                // referenced by content-hash filenames
+│   └─ …                // human-readable stable paths (normative)
 └─ thumbnail.png        // 1280×720 cover
 ```
 
-Rules: all JSON schemas carry `"schemaVersion"`; readers must migrate forward (migration functions per version bump, tested); unknown fields are preserved on round-trip (forward compatibility); asset references are by content hash so bundles are dedupe-able and integrity-checkable.
+Rules: all JSON schemas carry `"schemaVersion"`; readers must migrate forward (migration functions per version bump, tested); unknown fields are preserved on round-trip (forward compatibility). **Asset addressing (normative):** paths under `assets/` are **human-readable and stable** (e.g. `assets/seraph.bin`). Every asset reference — in `manifest.json` `assets[]`, graph/story media refs, and provenance — **must** carry a **content hash** (e.g. `sha256`) of the file bytes. Integrity and dedupe are by hash; display and packaging paths are by stable path. **On-disk names are not required to be content-hash filenames.** Hash-named packaging (store blob as `assets/<sha256>…`) is an **optional optimization only**, never the sole normative model.
 
 ### 12.3 Serialization taint check (hard requirement)
 
-Every serialization/export/publish path runs a **secret-scan gate**: reject the write if any string matches configured key patterns (`sk-…`, `sk-ant-…`, generic high-entropy detector, plus the exact strings currently in the Vault). This is defense-in-depth; keys are already architecturally excluded from Project State. A failed gate is a loud, blocking error — never a warning.
+Every serialization/export/publish path runs a **secret-scan gate** (defense-in-depth; keys are already architecturally excluded from Project State). A failed gate is a loud, blocking error — never a warning.
+
+**Normative detectors (blocking):**
+1. **Known provider key prefixes / formats** — at minimum `sk-…`, `sk-ant-…`, and any additional allowlisted patterns maintained with adapter work.
+2. **Exact equality** against raw secret strings currently held in the Vault (and any session-only secrets still in memory for that gate run).
+
+**Explicit exemptions (must not block):** content-addressing and integrity fields required by this chapter — including but not limited to `assets[].sha256`, `artifactHash`, `promptHash`, other fixed-length digests (hex/base64 encodings of SHA-256 etc.), and non-string zip members. A conforming non-empty `.icx` with real content hashes must pass the gate.
+
+**Advisory only:** any generic high-entropy or “looks like a key” heuristic is **non-blocking**, must be scoped so it cannot reject exempt digest fields, and may only surface as a diagnostic. It is not a normative rejector.
 
 ### 12.4 `provenance.json`
 
@@ -532,13 +556,18 @@ Append-only records: `{artifactHash, capability, providerClass, modelId, promptH
 ### 13.1 Standalone Player (`player.html`)
 
 - Two export profiles:
-  1. **`hosted-pair` (default):** `player.html` + `experience.icx` (or equivalent), designed to travel together or with `player` pointing at an author-hosted URL. After load of the pair, playback makes **no AI calls** and no required third-party calls; optional progressive asset fetch only if the author chose a hosted asset layout (declared in manifest).
-  2. **`offline-complete`:** single artifact with runtime + bundle embedded (prefer binary append / inflate over base64). Hard size cap for this profile (recommended: fail export above **3 MB total** unless user acknowledges “large single-file”).
+  1. **`hosted-pair` (default):** `player.html` + `experience.icx` (or equivalent), designed to travel together on a **same-origin `http(s)` (or `blob:`) host**, or with `player` pointing at an author-hosted URL. After load of the pair, playback makes **no AI calls** and no required third-party calls; optional progressive asset fetch only if the author chose a hosted asset layout (declared in manifest).
+  2. **`offline-complete`:** single artifact with runtime + bundle embedded (prefer binary append / inflate over base64; document-inline embedding is conformant). Hard size cap for this profile (recommended: fail export above **3 MB total** unless user acknowledges “large single-file”).
+- **Named load paths (normative — which profile works where):**
+  1. **`hosted-pair` over `http(s)`:** automatic sibling / same-origin load of `experience.icx` from the served `player.html`. This is the default author-host and Cloister/static-host path.
+  2. **`offline-complete` from `file://`:** open the single exported artifact as a local file (desktop evergreen). No companion fetch.
+  3. **`user-picked-icx`:** open a hosted (or local) `player.html` over a context that can run the player, then load the `.icx` via an explicit user file pick (`<input type="file">` / File System Access). **No silent relative `fetch` of a sibling `.icx` from an opaque `file:` origin.** This path is first-class in §13.1, not a demo-only workaround.
+- **`file://` constraint:** modern browsers treat `file:` documents as **opaque origins**; CORS is HTTP(S)-only. Therefore automatic companion `.icx` load under `file://` is **non-portable** and **non-conformant** as a required path. Claims that hosting “works from `file://`” apply only via **offline-complete** or **user-picked-icx**, never via silent relative fetch of a hosted-pair sibling.
 - **Flagship assets:** assets of `seraph.bin` class exceed the offline-complete default cap **by design**. The intended path is **`hosted-pair`**, or offline-complete only with the explicit large-single-file acknowledgment. **Decimating flagship first-party assets solely to fit single-file is not an acceptable export strategy.**
 - Target player **runtime** ≤ 900 KB gz (§16). Asset weight is profile-specific. Portability forever (§4.6) applies to **`.icx` + schema migrations**; embedded `player.html` freezes a runtime and is not required to self-migrate across major versions (re-export is the upgrade path).
 - The player runs Stations, cues, choices, audio, and all rendering — but **never calls AI providers**: every GEN op plays back its cached artifact. (A "live oracle" viewer mode, where a viewer supplies their own key, is a v2 open question — §20.)
 - Player chrome: title card, *click to begin* rite, progress indicia (station beads, styled as a rosary rail), mute, fullscreen, and an "About / Provenance" panel (author identity, provenance summary, license).
-- Hosting is trivially static: works from `file://`, any static host, a Vercel deploy (e.g., under 40days.ai), or attached to a Nostr note as a URL.
+- Hosting of `hosted-pair` is trivially static on any static **`http(s)`** host (e.g. Vercel under 40days.ai) or as a URL attached to a Nostr note. It is **not** required to auto-load from `file://`.
 
 ### 13.2 Other exports
 
@@ -570,7 +599,12 @@ Publishing is an explicit editor/command flow (and M4 UI), not a per-frame `OUT`
 
 ### 14.3 Event model (proposed mini-NIP: "Interactive Experience")
 
-- **Media first:** exporter uploads `thumbnail.png`, a short preview video, and (size-permitting) the `.icx` bundle and/or `player.html` to a **Blossom media server** and/or **NIP-96** HTTP file host of the user's choosing (self-hostable; multiple mirrors encouraged). Each upload yields hash-addressed URLs + **NIP-94** file-metadata events.
+- **Media first (v1 = Blossom only):** exporter uploads `thumbnail.png`, a short preview video, and (size-permitting) the `.icx` bundle and/or `player.html` to one or more **Blossom** media servers of the user's choosing (self-hostable; **≥2 mirrors by default** when the user has configured multiple servers). Normative protocol surface: **NIP-B7 + BUD-01 / BUD-02 / BUD-11** (auth and upload as specified by those BUDs). **NIP-96 is not a v1 media path** — no peer “and/or NIP-96,” no legacy NIP-96 adapter in v1/M4.
+  - **Server response:** a successful Blossom upload returns a **Blob Descriptor** (URL, sha256, size, type, uploaded, …) — **not** a signed Nostr event.
+  - **Byte fidelity:** Blossom servers MUST NOT modify uploaded bytes and MUST hash the exact received payload. The URL/`sha256` identity is the hash of **served bytes**. This byte-fidelity guarantee is the basis of the multi-mirror posture.
+  - **Client hash verification (normative):** on fetch of published media (and when packing/verifying mirrors), the client **MUST** verify `sha256(downloaded bytes) ===` the expected content hash from the descriptor / bundle tags. Mismatch is a hard failure for that mirror (try next mirror / surface error); do not silently accept transformed bytes.
+  - **NIP-94:** the **Publisher** (client) **may optionally** construct, sign, and publish separate **kind:1063** (NIP-94) file-metadata events to relays after upload. Media servers do not emit these events. Optional NIP-94 is not required for M4 success if kind 1 + 31333 + working URLs succeed.
+  - Bundle / player tags that carry media (`image`, `bundle`, …) use the Blossom hash-addressed URL and the verified content hash of the uploaded bytes.
 - **Manifest event:** one **parameterized replaceable event**, proposed `kind: 31333` (`"iconostasis-experience"`), addressable by `(pubkey, d-tag)` so updates replace cleanly:
 
 ```json
@@ -634,7 +668,7 @@ The sovereign fallback is deliberately boring: **run a standard open-source Nost
 1. **Performance:** frame budget per §8.4 tiers; **signal-path** cook overhead ≤ 2ms/frame at ≤ 60 ops when no heavy ports are dirty; heavy cooks (`geometry`, `field` reallocate, shader recompile) are amortized / flagged and excluded from the 2ms signal budget (separate CI budgets per heavy op class); time-to-first-render on a template ≤ 3s on `chapel` tier; editor interactions ≤ 100ms perceived latency.
 2. **Offline:** full authoring + playback offline (PWA, service-worker cached) with GEN ops in `error/last-good` state; local-model users are fully offline end-to-end.
 3. **Compatibility:** evergreen Chromium/Firefox/Safari, last 2 versions; WebGPU used when present, never required; iOS Safari must reach `wayside` tier playback for published players.
-4. **Photosensitivity & accessibility (doctrinal):** a flash limiter at the ToneMap stage (always on in the player; editor override with warning) enforces WCAG 2.3.1: count whole-frame mean-luminance **flashes** (threshold-crossing peaks) over a rolling 1s window and suppress or damp contributions that would exceed **3 flashes/sec**; additionally apply a max rise-rate damper on frame-to-frame mean luminance to reduce pathological strobing between counted peaks; `prefers-reduced-motion` honored (processional camera slows, particle counts drop); all captions available as an accessible text track; player chrome fully keyboard operable; UI contrast meets WCAG AA against the dark theme.
+4. **Photosensitivity & accessibility (doctrinal):** a flash limiter at the ToneMap stage (always on in the player; editor override with warning) is a **WCAG 2.3.1-oriented runtime damper**, not a claim of full SC 2.3.1 enforcement: count whole-frame mean-luminance **flashes** (threshold-crossing peaks) over a rolling 1s window and suppress or damp contributions that would exceed **3 flashes/sec**; additionally apply a max rise-rate damper on frame-to-frame mean luminance to reduce pathological strobing between counted peaks. **Approximation (normative honesty):** whole-frame mean luminance only — not WCAG general/red flash area thresholds, ~10° field, or saturated-red path; do not claim SC 2.3.1 certification. Product copy and tests may claim “2.3.1-oriented damper (mean-luminance + rise-rate)” only. `prefers-reduced-motion` honored (processional camera slows, particle counts drop); all captions available via a **synchronized off-canvas DOM caption surface** mirroring active story/`LIT/Caption` cues, exposed to assistive tech with appropriate live-region behavior (e.g. `aria-live` polite or an equivalent documented pattern) — **not** an HTML `TextTrack` / `<track>` on a media element; **WebVTT** (or equivalent) is required only as an export artifact for **recorded video** (§13.2), not as the interactive player caption transport; player chrome fully keyboard operable; UI contrast meets WCAG AA against the dark theme.
 5. **Internationalization:** UI strings externalized; captions are user content (any script); fonts subset per template.
 6. **Bundle sizes:** app core ≤ 1.5 MB gz (excluding optional wasm codecs, lazy-loaded); player runtime ≤ 900 KB gz.
 
@@ -672,8 +706,8 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
   - **M2a — Boundary:** Key Vault, SecretRef fetch boundary, taint gate, spend ceiling plumbing, Provider Registry shell, arming UI hooks, first live adapter path via `openai-compat` (including local Ollama).
   - **M2b — Breadth:** remaining shipped adapters, Local Helper with pairing, full GEN family (`PromptLoom`, `Oracle`, `Icon`, `Antiphon`), provenance, spend meter UX.
   *Demo: signals→prompt→image→texture and generated voice, live, on the user’s own key — including a fully-local Ollama run; demonstrate armed/disarmed Perform behavior and hard spend stop.*
-- **M3 — Liturgy (3–4 wks):** Story Engine (`story.json` authority), Procession View, transitions, `LIT/Choice` branching, captions, four shipped templates **with pre-cached GEN artifacts**, Template Mode, standalone player export (`hosted-pair` default; `offline-complete` within cap, no silent flagship decimation), video/still export v1 as realtime capture. *Demo: Via Lucis end-to-end, exported, opened from `file://` on a phone (`wayside`).*
-- **M4 — Procession (2–3 wks):** Nostr publishing (NIP-07/46, Blossom/NIP-96, kind 31333 + kind 1), publish-preview, Cloister Relay deployment, verification per revised demo line. *Demo: publish once; open the kind-1 announcement in a Buzz community and in two public Nostr clients (working player link); open the same experience from Cloister Gallery via kind 31333 on our relay.*
+- **M3 — Liturgy (3–4 wks):** Story Engine (`story.json` authority), Procession View, transitions, `LIT/Choice` branching, captions, four shipped templates **with pre-cached GEN artifacts**, Template Mode, standalone player export (`hosted-pair` default; `offline-complete` within cap, no silent flagship decimation; load paths per §13.1), video/still export v1 as realtime capture. *Demo — Via Lucis end-to-end on all three §13.1 load paths: (A) hosted-pair over `http(s)` on a wayside phone; (B) offline-complete opened from `file://` on desktop evergreen; (C) hosted player + user-picked `.icx` on a wayside phone. Do not accept “default hosted-pair auto-load from `file://` on iOS/Android Safari” as the demo.*
+- **M4 — Procession (2–3 wks):** Nostr publishing (NIP-07/46, **Blossom only** for media, kind 31333 + kind 1), publish-preview, Cloister Relay deployment, verification per revised demo line. *Demo: publish once; open the kind-1 announcement in a Buzz community and in two public Nostr clients (working player link); open the same experience from Cloister Gallery via kind 31333 on our relay.*
 - **M5 — Cathedral (ongoing/stretch):** MIDI mapping polish, OSC bridge, WebCodecs offline render, `GEN/Relief`, AT-proto adapter, live-oracle viewer mode, collaborative editing exploration, `OUT`-class recorder as live op only if justified under §20.6.
 
 ---
@@ -681,7 +715,7 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 ## 19. Testing & Acceptance
 
 - **Unit:** graph evaluation (cook order, dirty propagation, feedback delay, Async Arrival Law semantics including streaming text and audio queue-to-cue); schema round-trip with fuzzed unknown fields; migration chains v(n)→v(n+1); taint-gate red-team corpus (keys hidden in params, captions, prompt templates, asset filenames — all must block).
-- **Golden-frame:** headless renders of each template at fixed seeds/inputs diffed against approved plates **per tier and per backend** (WebGL2 mandatory; tolerance-based; catches shader regressions).
+- **Golden-frame:** headless renders of each template at fixed seeds/inputs diffed against approved plates **per tier, per backend, and per HDR|LDR path** (WebGL2 mandatory; WebGL2+`EXT_color_buffer_float` HDR plates where CI GPU exposes the extension; LDR plates always; WebGPU optional where available; tolerance-based; catches shader regressions).
 - **Adapter contract tests:** each adapter against a mock server implementing its wire format; `openai-compat` additionally smoke-tested against a real local Ollama in CI-optional mode.
 - **Publish integration:** dockerized local relay + local Blossom server; assert event kinds/tags/signatures; assert the kind-1 note renders a working link.
 - **Performance gates in CI:** cook-time budget, bundle-size budgets, template time-to-first-render.
@@ -695,7 +729,7 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 |---|---|---|
 | 1 | **Provider CORS churn** — browser-direct calls break as vendors change policy. | `openai-compat`+local models is the resilient path; Local Helper is the universal fallback; adapters are small and replaceable. |
 | 2 | **Sentinel launches and overlaps.** | Expected. Hold the differentiators (§2.1): story, BYOK sovereignty, decentralized publishing, committed aesthetic. Revisit positioning at their launch. |
-| 3 | **Nostr media persistence** — Blossom hosts can vanish. | Hash-addressed uploads to ≥2 mirrors by default; the bundle also lives on the author's disk; the player URL can be author-hosted (Vercel) independent of Nostr media. |
+| 3 | **Nostr media persistence** — Blossom hosts can vanish. | **Blossom byte-fidelity** + uploads to **≥2 mirrors by default**; **client-side sha256 verification on fetch**; the bundle also lives on the author's disk; the player URL can be author-hosted (Vercel) independent of Nostr media. |
 | 4 | **Buzz is v0.x and moving.** | We never bind to its app surface — only to Nostr events + plain links. Zero coupling to Buzz release cadence. |
 | 5 | **WebGPU support matrix** (esp. iOS). | WebGL2 fallback is first-class, not vestigial; `wayside` tier is tested every milestone. |
 | 6 | **Scope creep toward full TouchDesigner.** | Operator catalog is capped at v1; additions require removing or consolidating (one-in-one-out until v2). |
@@ -703,6 +737,7 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 | 8 | **Live-oracle viewer mode** (viewer brings a key to a published piece) — powerful, but expands the player's threat surface. | Deferred to v2; requires its own security review. |
 | 9 | **Sacred-register misuse by users.** | The tool is a brush; policy lives at the relay/community layer (§14.4) and in shipped-content standards (§15.3), not in authoring restrictions. |
 | 10 | **Determinism vs. provider drift** — models change under the same id. | Cached-artifact playback (§9.4) makes published works immune; authoring accepts drift as the nature of oracles. |
+| 11 | **NIP-96 hosts still in the wild.** | **Out of v1.** If a specific host demands NIP-96 later, consider a **future** adapter only — never co-equal with Blossom in v1; document transform/`no_transform` and hash semantics before any promotion. |
 
 ---
 

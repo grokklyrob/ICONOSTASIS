@@ -1,8 +1,8 @@
 # ICONOSTASIS — Critical Path
 
 **Status:** Accepted (advisor review v0.2)  
-**Spec:** `architecture.md` Draft v0.2  
-**Source:** bitmonk advisor §3 + AMD-20 / AMD-01 / M2a-before-M2b flags
+**Spec:** `architecture.md` Draft v0.3  
+**Source:** bitmonk advisor §3 + AMD-20 / AMD-01 / M2a-before-M2b flags; v0.3 load-path matrix (AMD-21/22)
 
 This document is the dependency and parallelism contract for multi-agent implementation. It does not replace milestone demos in §18; it sequences packages so agents do not thrash the same files.
 
@@ -48,7 +48,7 @@ This document is the dependency and parallelism contract for multi-agent impleme
         │                            │
         └────────────┬───────────────┘
                      ▼
-[M3 exit] Via Lucis export → file:// phone (wayside)
+[M3 exit] Via Lucis: (A) hosted-pair http(s) wayside phone; (B) offline-complete file:// desktop; (C) player + user-picked .icx phone
                      │
         ┌────────────┼──────────────┐
         ▼            ▼              ▼
@@ -74,7 +74,7 @@ M5 is stretch; out of critical path.
 | **M1** | `engine` + `app` | All **31 non-GEN** net-catalog ops land (type/ports/params/serialize/cook); Radiance Stack; measured tier + point governor; OPFS + `.icx`; Perform v0; **synthetic async operator** proves Arrival Law (streaming text vs replacement, audio queue-to-cue, GPU fade cap/queue, `cacheScope`, failure) **before any real adapter** |
 | **M2a** | `packages/gen` boundary + vault/registry hooks in `app` | SecretRef single fetch boundary; taint gate; spend ceiling plumbing; arming hooks; first live `openai-compat` (incl. local Ollama) |
 | **M2b** | `packages/gen` adapters + `packages/helper` | Remaining adapters; Local Helper with pairing; GEN family complete; provenance; spend meter UX; M2 demo (live + armed/disarmed + hard stop) |
-| **M3** | `packages/story` + `packages/player` + templates | `story.json` authority; four templates with pre-cached GEN artifacts; `hosted-pair` default export; Via Lucis on phone wayside |
+| **M3** | `packages/story` + `packages/player` + templates | `story.json` authority; four templates with pre-cached GEN artifacts; load paths per §13.1; Via Lucis demo matrix (A)(B)(C) |
 | **M4** | `packages/publish` + `apps/gallery` | Publish once → kind-1 in Buzz + two public clients (working link); same experience via kind 31333 in Cloister |
 
 ---
@@ -162,6 +162,8 @@ After **contracts are frozen** on main:
 | M2a before M2b | One-writer on gen boundary files |
 | Hybrid direct/helper (AMD-07) | Same package topology; higher helper quality bar |
 | M4 kind-1 + 31333 demo | Test assertions only; publish → gallery order unchanged |
+| Blossom-only media (AMD-28) | NIP-96 out of v1; publish package remains Blossom + kinds |
+| Load paths (AMD-21/22) | M3 exit is (A)(B)(C) matrix, not bare file:// hosted-pair |
 
 ---
 
