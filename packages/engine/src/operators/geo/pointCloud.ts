@@ -24,6 +24,8 @@ export interface PointCloudAsyncView {
   errorMessage?: string;
   /** True while a load has been scheduled and not yet settled. */
   loadStarted: boolean;
+  /** Points granted by the scene governor on last settle (if any). */
+  grantedPoints?: number;
 }
 
 function cacheKey(
@@ -31,10 +33,12 @@ function cacheKey(
   maxPoints: number,
   cacheScope: CacheScope,
   stationId: string | undefined,
+  /** Governor budget fingerprint so tier/budget changes reload. */
+  governorBudget: number | "none",
 ): string {
   const scopePart =
     cacheScope === "global" ? "global" : `station:${stationId ?? "default"}`;
-  return `${scopePart}|${assetPath}|max:${maxPoints}`;
+  return `${scopePart}|${assetPath}|max:${maxPoints}|gov:${governorBudget}`;
 }
 
 export const pointCloudFactory: OperatorFactory = {
@@ -101,8 +105,11 @@ export const pointCloudFactory: OperatorFactory = {
     let loadStarted = false;
     let inflightKey: string | undefined;
     let settledKey: string | undefined;
+    let grantedPoints: number | undefined;
     /** Pending geometry after reload while holding lastGoodValue (hold-then-swap). */
     let pendingGeometry: GeometryHandle | undefined;
+    /** Last governor instance we leased against (for dispose release). */
+    let leasedGovernor: { request: (id: string, n: number) => number; release: (id: string) => void } | undefined;
 
     const publishGeometry = (
       data: GeometryHandle["data"],
@@ -129,6 +136,7 @@ export const pointCloudFactory: OperatorFactory = {
           lastGoodValue: asyncState.lastGoodValue,
           errorMessage: asyncState.errorMessage,
           loadStarted,
+          grantedPoints,
         };
       },
       getOutput(port: string): unknown {
@@ -154,7 +162,15 @@ export const pointCloudFactory: OperatorFactory = {
           ? "global"
           : "station") as CacheScope;
 
-        const key = cacheKey(assetPath, maxPoints, cacheScope, undefined);
+        const governor = ctx.pointGovernor;
+        const govBudget = governor ? governor.budget : "none";
+        const key = cacheKey(
+          assetPath,
+          maxPoints,
+          cacheScope,
+          undefined,
+          govBudget,
+        );
 
         // Update draw params on presented geometry without reloading.
         if (asyncState.lastGoodValue) {
@@ -190,9 +206,31 @@ export const pointCloudFactory: OperatorFactory = {
               .then((buffer) => {
                 if (inflightKey !== key) return; // superseded
                 const parsed = parseSeraphBin(buffer);
-                const data = decimatePoints(parsed, maxPoints);
+                // Author maxPoints (0 = unlimited) ∩ asset count, then governor.
+                const authorCap =
+                  maxPoints > 0
+                    ? Math.min(maxPoints, parsed.count)
+                    : parsed.count;
+                let target = authorCap;
+                if (governor) {
+                  leasedGovernor = governor;
+                  target = governor.request(id, authorCap);
+                }
+                grantedPoints = target;
+                const data = decimatePoints(parsed, target > 0 ? target : 0);
+                // decimatePoints treats maxPoints<=0 as unlimited; empty grant → 0 pts.
+                const finalData =
+                  target <= 0
+                    ? {
+                        count: 0,
+                        positions: new Float32Array(0),
+                        colors: parsed.colors
+                          ? new Uint8Array(0)
+                          : undefined,
+                      }
+                    : data;
                 const geom = publishGeometry(
-                  data,
+                  finalData,
                   Number.isFinite(pointSize) ? pointSize : 0.02,
                   displacement,
                 );
@@ -232,8 +270,11 @@ export const pointCloudFactory: OperatorFactory = {
         ctx.setOutput("geometry", asyncState.lastGoodValue);
       },
       dispose(): void {
+        leasedGovernor?.release(id);
+        leasedGovernor = undefined;
         inflightKey = undefined;
         pendingGeometry = undefined;
+        grantedPoints = undefined;
         asyncState.lastGoodValue = undefined;
         asyncState.status = "idle";
       },

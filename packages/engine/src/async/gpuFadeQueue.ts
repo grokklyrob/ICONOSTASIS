@@ -5,7 +5,9 @@
  * arrival for that op; snap-to-clear-queue is forbidden.
  */
 
-export type DeviceTier = "cathedral" | "chapel" | "wayside";
+import type { DeviceTier } from "../tier/types.js";
+
+export type { DeviceTier };
 
 export function maxConcurrentGpuFades(tier: DeviceTier): number {
   switch (tier) {

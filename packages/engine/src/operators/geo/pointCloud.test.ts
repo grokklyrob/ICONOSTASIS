@@ -258,6 +258,70 @@ describe("GEO/PointCloud", () => {
     expect(call).toBe(2);
   });
 
+  it("honors scene point governor: min(author, remaining) (§8.4)", async () => {
+    const { PointGovernor } = await import("../../tier/pointGovernor.js");
+    const registry = new OperatorRegistry();
+    registry.register(pointCloudFactory);
+    registry.register(makeSinkFactory());
+
+    const governor = new PointGovernor(10);
+    const graph = createGraph({
+      schemaVersion: 1,
+      nodes: [
+        {
+          id: "pc1",
+          type: GEO_POINT_CLOUD_TYPE,
+          params: { assetPath: "a.bin", maxPoints: 0 },
+        },
+        {
+          id: "pc2",
+          type: GEO_POINT_CLOUD_TYPE,
+          params: { assetPath: "b.bin", maxPoints: 0 },
+        },
+        { id: "sink", type: "Test/Sink", params: {} },
+      ],
+      wires: [
+        {
+          id: "w1",
+          from: { opId: "pc1", port: "geometry" },
+          to: { opId: "sink", port: "geometry" },
+        },
+        {
+          id: "w2",
+          from: { opId: "pc2", port: "geometry" },
+          to: { opId: "sink", port: "geometry" },
+        },
+      ],
+      modulations: [],
+    });
+
+    const evaluator = new GraphEvaluator(graph, registry, {
+      loadAsset: async () => fixtureBuffer(20),
+      pointGovernor: governor,
+    });
+
+    evaluator.tick({ time: 0, delta: 0, frame: 0 });
+    await delay(0);
+    await delay(0);
+    evaluator.tick({ time: 0.016, delta: 0.016, frame: 1 });
+
+    const pc1 = graph.getInstance("pc1") as OperatorInstance & {
+      asyncView: PointCloudAsyncView;
+    };
+    const pc2 = graph.getInstance("pc2") as OperatorInstance & {
+      asyncView: PointCloudAsyncView;
+    };
+
+    const c1 = pc1.asyncView.lastGoodValue?.data.count ?? 0;
+    const c2 = pc2.asyncView.lastGoodValue?.data.count ?? 0;
+    expect(c1 + c2).toBeLessThanOrEqual(10);
+    expect(c1 + c2).toBe(governor.used);
+    // Full author request was 20 each; governor must have clipped.
+    expect(Math.max(c1, c2)).toBeLessThanOrEqual(10);
+    expect(pc1.asyncView.grantedPoints).toBe(c1);
+    expect(pc2.asyncView.grantedPoints).toBe(c2);
+  });
+
   it("publishes modulatable displacement on the geometry handle", async () => {
     const registry = new OperatorRegistry();
     registry.register(pointCloudFactory);

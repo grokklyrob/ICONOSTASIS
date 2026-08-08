@@ -114,7 +114,28 @@ export {
   GpuFadeQueue,
   maxConcurrentGpuFades,
 } from "./async/gpuFadeQueue.js";
-export type { DeviceTier } from "./async/gpuFadeQueue.js";
+
+export type {
+  DeviceTier,
+  ProbeBackend,
+  RadiancePassId,
+  RadiancePassPolicy,
+  TierBudgets,
+} from "./tier/types.js";
+export {
+  POINT_BUDGET_BY_TIER,
+  FRAME_TARGET_FPS_BY_TIER,
+  budgetsForTier,
+  radiancePostForTier,
+  isRadiancePassEnabled,
+  isBloomHalfRes,
+} from "./tier/budgets.js";
+export {
+  classifyTier,
+  runCapabilityProbe,
+} from "./tier/probe.js";
+export type { ProbeMeasurements, ProbeResult } from "./tier/probe.js";
+export { PointGovernor } from "./tier/pointGovernor.js";
 
 export type { AudioFrameSnapshot } from "./audio/types.js";
 export {

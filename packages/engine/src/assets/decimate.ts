@@ -1,6 +1,6 @@
 /**
  * Point-cloud decimation hook (§8.4).
- * Full scene-total point governor is M1; this is the loader-side maxPoints hook.
+ * Loader-side stride sample; scene-total budget is PointGovernor.request → granted.
  */
 
 import type { SeraphBinData } from "./seraphBin.js";

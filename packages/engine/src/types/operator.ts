@@ -5,6 +5,9 @@
 
 import type { AudioFrameSnapshot } from "../audio/types.js";
 import type { RenderBackend } from "../render/backend.js";
+import type { PointGovernor } from "../tier/pointGovernor.js";
+import type { ProbeResult } from "../tier/probe.js";
+import type { DeviceTier } from "../tier/types.js";
 import type { ParamSpec, ParamValue } from "./params.js";
 import type { PortSpec } from "./ports.js";
 
@@ -56,6 +59,15 @@ export interface CookContext {
    * Must not be awaited by cook — fire-and-forget only (AMD-01).
    */
   scheduleDeferred?: DeferredScheduler;
+  /**
+   * Optional scene-total point governor (§8.4). Emitters request; loaders
+   * decimate to the granted count. Absent → op-local maxPoints only (M0 path).
+   */
+  pointGovernor?: PointGovernor;
+  /** Optional measured (or preview) capability probe result for this session. */
+  probeResult?: ProbeResult;
+  /** Convenience: probeResult.tier when present. */
+  deviceTier?: DeviceTier;
   /** Read a wired input port value (upstream last output). */
   getInput(port: string): unknown;
   /**
@@ -74,6 +86,8 @@ export interface EvaluatorHost {
   loadAsset?: AssetLoader;
   renderBackend?: RenderBackend;
   scheduleDeferred?: DeferredScheduler;
+  pointGovernor?: PointGovernor;
+  probeResult?: ProbeResult;
 }
 
 /**

@@ -126,6 +126,9 @@ export class GraphEvaluator {
       loadAsset: this.host.loadAsset,
       renderBackend: this.host.renderBackend,
       scheduleDeferred: this.host.scheduleDeferred,
+      pointGovernor: this.host.pointGovernor,
+      probeResult: this.host.probeResult,
+      deviceTier: this.host.probeResult?.tier,
       getInput: (port) => inputIndex.get(port),
       getParam: (id) => {
         const v = effective[id];
