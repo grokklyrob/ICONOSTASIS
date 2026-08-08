@@ -5,6 +5,10 @@
 
 import type { AudioFrameSnapshot } from "../audio/types.js";
 import type { RenderBackend } from "../render/backend.js";
+import type {
+  InputFrameSnapshot,
+  MidiFrameSnapshot,
+} from "./hostFrames.js";
 import type { PointGovernor } from "../tier/pointGovernor.js";
 import type { ProbeResult } from "../tier/probe.js";
 import type { DeviceTier } from "../tier/types.js";
@@ -47,6 +51,10 @@ export interface CookContext {
    * Undefined / inactive → zeros. Never populated by cook itself.
    */
   audio?: AudioFrameSnapshot;
+  /** Optional host pointer/keyboard frame for SRC/Input (§11.2). */
+  input?: InputFrameSnapshot;
+  /** Optional host MIDI frame for SRC/MIDI (§11.2). */
+  midi?: MidiFrameSnapshot;
   /**
    * Optional host asset loader. Async ops schedule I/O via this and must not
    * return a Promise from cook (AMD-01).
@@ -121,11 +129,15 @@ export interface OperatorFactory {
   create(id: string, params: Record<string, ParamValue>): OperatorInstance;
 }
 
-/** Frame clock (+ optional audio) supplied by the host (demo shell or test). */
+/** Frame clock (+ optional host sources) supplied by the demo shell or test. */
 export interface FrameTime {
   time: number;
   delta: number;
   frame: number;
   /** Injected analyser snapshot for this frame (§11.1). */
   audio?: AudioFrameSnapshot;
+  /** Injected pointer/keyboard for SRC/Input (§11.2). */
+  input?: InputFrameSnapshot;
+  /** Injected MIDI for SRC/MIDI (§11.2). */
+  midi?: MidiFrameSnapshot;
 }

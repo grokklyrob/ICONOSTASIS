@@ -69,11 +69,46 @@ export {
   SRC_TIME_TYPE,
   audioInFactory,
   SRC_AUDIO_IN_TYPE,
+  inputFactory,
+  SRC_INPUT_TYPE,
+  midiFactory,
+  SRC_MIDI_TYPE,
+  seedFactory,
+  SRC_SEED_TYPE,
   lfoFactory,
   SIG_LFO_TYPE,
   evalLfoWave,
+  envelopeFactory,
+  SIG_ENVELOPE_TYPE,
+  mathFactory,
+  SIG_MATH_TYPE,
+  evalMath,
+  smoothFactory,
+  SIG_SMOOTH_TYPE,
+  logicFactory,
+  SIG_LOGIC_TYPE,
+  noiseFactory,
+  SIG_NOISE_TYPE,
   pointCloudFactory,
   GEO_POINT_CLOUD_TYPE,
+  primitiveFactory,
+  GEO_PRIMITIVE_TYPE,
+  instancerFactory,
+  GEO_INSTANCER_TYPE,
+  sdfFieldFactory,
+  GEO_SDF_FIELD_TYPE,
+  particlesFactory,
+  GEO_PARTICLES_TYPE,
+  glyphFactory,
+  GEO_GLYPH_TYPE,
+  pointsMaterialFactory,
+  MAT_POINTS_MATERIAL_TYPE,
+  goldLeafPbrFactory,
+  MAT_GOLD_LEAF_PBR_TYPE,
+  haloFactory,
+  MAT_HALO_TYPE,
+  customShaderFactory,
+  MAT_CUSTOM_SHADER_TYPE,
   bloomFactory,
   FX_BLOOM_TYPE,
   godraysFactory,
@@ -84,9 +119,17 @@ export {
   FX_GRAIN_TYPE,
   vignetteFactory,
   FX_VIGNETTE_TYPE,
+  feedbackFactory,
+  FX_FEEDBACK_TYPE,
+  captionFactory,
+  LIT_CAPTION_TYPE,
+  choiceFactory,
+  LIT_CHOICE_TYPE,
   renderFactory,
   OUT_RENDER_TYPE,
   DEFAULT_CLEAR_COLOR,
+  audioOutFactory,
+  OUT_AUDIO_OUT_TYPE,
   syntheticAsyncFactory,
   TEST_SYNTHETIC_ASYNC_TYPE,
   setSyntheticGpuFadeQueue,
@@ -99,7 +142,20 @@ export type {
   CacheScope,
   SyntheticAsyncView,
   SyntheticMode,
+  MathOp,
+  LogicOp,
 } from "./operators/catalog.js";
+
+export type {
+  InputFrameSnapshot,
+  MidiFrameSnapshot,
+} from "./types/hostFrames.js";
+export {
+  EMPTY_INPUT_FRAME,
+  EMPTY_MIDI_FRAME,
+} from "./types/hostFrames.js";
+export type { MaterialHandle, MaterialKind } from "./materials/types.js";
+export { isMaterialHandle } from "./materials/types.js";
 
 export {
   asyncCacheKey,
@@ -201,3 +257,36 @@ export {
   limitedExposureScale,
   DEFAULT_FLASH_LIMITER_CONFIG,
 } from "./render/flashLimiter.js";
+
+// Persistence — taint gate, .icx, OPFS autosave (§12)
+export { sha256Hex, isSha256Hex, isSha256Base64 } from "./persist/hash.js";
+export {
+  scanForSecrets,
+  scanTextForSecrets,
+  assertUntainted,
+  advisoryHighEntropy,
+  TaintGateError,
+  type TaintFinding,
+  type TaintGateOptions,
+} from "./persist/taintGate.js";
+export {
+  packIcx,
+  unpackIcx,
+  verifyIcxAssetHashes,
+  ensureAssetHashes,
+  IcxError,
+  createDefaultManifest,
+  parseManifest,
+  type IcxProject,
+  type PackIcxOptions,
+  type Manifest,
+} from "./persist/icx.js";
+export {
+  AUTOSAVE_RING_SIZE,
+  AutosaveRing,
+  MemoryAutosaveStore,
+  OpfsAutosaveStore,
+  createAutosaveStore,
+  type AutosaveMeta,
+  type AutosaveStore,
+} from "./persist/opfsAutosave.js";

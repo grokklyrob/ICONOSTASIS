@@ -1,0 +1,24 @@
+{
+  "name": "@iconostasis/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ICONOSTASIS editor — graph shell + Perform Mode v0 (§7.3, §18 M1)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@iconostasis/engine": "workspace:*",
+    "three": "^0.172.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.172.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.4"
+  }
+}

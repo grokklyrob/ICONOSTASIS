@@ -27,8 +27,33 @@ importers:
         specifier: ^6.0.7
         version: 6.4.3(@types/node@22.20.1)
 
+  packages/app:
+    dependencies:
+      '@iconostasis/engine':
+        specifier: workspace:*
+        version: link:../engine
+      three:
+        specifier: ^0.172.0
+        version: 0.172.0
+    devDependencies:
+      '@types/three':
+        specifier: ^0.172.0
+        version: 0.172.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.7
+        version: 6.4.3(@types/node@22.20.1)
+      vitest:
+        specifier: ^3.0.4
+        version: 3.2.7(@types/node@22.20.1)
+
   packages/engine:
     dependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       three:
         specifier: ^0.172.0
         version: 0.172.0

@@ -6,7 +6,10 @@
   "scripts": {
     "test": "pnpm --filter @iconostasis/engine test",
     "typecheck": "pnpm --filter @iconostasis/engine typecheck",
-    "demo": "pnpm --filter @iconostasis/m0-demo dev"
+    "demo": "pnpm --filter @iconostasis/m0-demo dev",
+    "app": "pnpm --filter @iconostasis/app dev",
+    "test:app": "pnpm --filter @iconostasis/app test",
+    "typecheck:app": "pnpm --filter @iconostasis/app typecheck"
   },
   "engines": {
     "node": ">=20"

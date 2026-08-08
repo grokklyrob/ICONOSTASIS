@@ -1,0 +1,565 @@
+/* §5.1 KENOSARKOSPORA Codex tokens */
+:root {
+  color-scheme: dark;
+  --crypt-void: #0d0d14;
+  --nave-indigo: #16213e;
+  --mycelial-violet: #533483;
+  --kenotic-rose: #e94560;
+  --spore-cyan: #00d9ff;
+  --biolume-gold: #ffd369;
+  --vellum-bone: #f5f0e1;
+  --panel: color-mix(in srgb, var(--nave-indigo) 85%, black);
+  --chrome-h: 2.5rem;
+  --palette-w: 13rem;
+  --inspector-w: 15rem;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: "IBM Plex Mono", "Segoe UI Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--crypt-void);
+  color: var(--vellum-bone);
+  overflow: hidden;
+}
+
+.chrome {
+  height: var(--chrome-h);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.75rem;
+  background: var(--panel);
+  border-bottom: 1px solid color-mix(in srgb, var(--biolume-gold) 25%, transparent);
+}
+
+.brand {
+  color: var(--biolume-gold);
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.chrome-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.chrome button,
+.file-label {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 40%, transparent);
+  color: var(--biolume-gold);
+  font: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.chrome button:hover,
+.file-label:hover {
+  background: color-mix(in srgb, var(--biolume-gold) 12%, transparent);
+}
+
+.status {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: color-mix(in srgb, var(--vellum-bone) 55%, transparent);
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: var(--chrome-h) 1fr;
+  grid-template-columns: var(--palette-w) 1fr;
+}
+
+.chrome {
+  grid-column: 1 / -1;
+}
+
+.palette {
+  grid-row: 2;
+  border-right: 1px solid color-mix(in srgb, var(--biolume-gold) 18%, transparent);
+  background: color-mix(in srgb, var(--crypt-void) 70%, var(--nave-indigo));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#palette-search {
+  margin: 0.5rem;
+  background: var(--crypt-void);
+  border: 1px solid color-mix(in srgb, var(--spore-cyan) 35%, transparent);
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.palette-list {
+  overflow: auto;
+  padding: 0 0.35rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.palette-item {
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.68rem;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.palette-item:hover {
+  background: color-mix(in srgb, var(--spore-cyan) 10%, transparent);
+}
+
+.palette-item.fam-SRC {
+  border-left-color: var(--nave-indigo);
+}
+.palette-item.fam-SIG {
+  border-left-color: var(--spore-cyan);
+}
+.palette-item.fam-GEO {
+  border-left-color: var(--mycelial-violet);
+}
+.palette-item.fam-MAT {
+  border-left-color: var(--biolume-gold);
+}
+.palette-item.fam-FX {
+  border-left-color: var(--kenotic-rose);
+}
+.palette-item.fam-LIT {
+  border-left-color: var(--vellum-bone);
+}
+.palette-item.fam-OUT {
+  border-left-color: var(--biolume-gold);
+}
+.palette-item.fam-GEN {
+  border-left-color: var(--biolume-gold);
+}
+
+.workspace {
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: 1fr minmax(16rem, 34vw) var(--inspector-w);
+  grid-template-rows: 1fr;
+  min-height: 0;
+  min-width: 0;
+}
+
+.graph-pane {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid color-mix(in srgb, var(--biolume-gold) 15%, transparent);
+}
+
+.graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background:
+    radial-gradient(
+      ellipse at 50% 40%,
+      color-mix(in srgb, var(--nave-indigo) 40%, transparent),
+      transparent 60%
+    ),
+    var(--crypt-void);
+  outline: none;
+  cursor: grab;
+}
+
+.graph-svg:active {
+  cursor: grabbing;
+}
+
+.graph-hint {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.4rem;
+  font-size: 0.6rem;
+  color: color-mix(in srgb, var(--vellum-bone) 40%, transparent);
+  pointer-events: none;
+}
+
+.wire {
+  fill: none;
+  stroke: var(--biolume-gold);
+  stroke-width: 1.4;
+  opacity: 0.75;
+  marker-end: url(#arrow);
+  pointer-events: stroke;
+}
+
+.wire.mod {
+  stroke: var(--spore-cyan);
+  stroke-dasharray: 4 3;
+  marker-end: none;
+}
+
+.wire-draft {
+  fill: none;
+  stroke: var(--spore-cyan);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.node {
+  cursor: pointer;
+}
+
+.node-body {
+  fill: color-mix(in srgb, var(--nave-indigo) 90%, black);
+  stroke: color-mix(in srgb, var(--biolume-gold) 45%, transparent);
+  stroke-width: 1;
+  rx: 4;
+}
+
+.node.selected .node-body {
+  stroke: var(--biolume-gold);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--biolume-gold) 40%, transparent));
+}
+
+.node-title {
+  fill: var(--vellum-bone);
+  font-size: 11px;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.node-type {
+  fill: color-mix(in srgb, var(--vellum-bone) 55%, transparent);
+  font-size: 9px;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.port {
+  fill: var(--crypt-void);
+  stroke: var(--spore-cyan);
+  stroke-width: 1.2;
+  cursor: crosshair;
+}
+
+.port.out {
+  stroke: var(--biolume-gold);
+}
+
+.port.param {
+  stroke: var(--mycelial-violet);
+  stroke-dasharray: 2 1;
+}
+
+.viewport-pane {
+  position: relative;
+  background: var(--crypt-void);
+  min-width: 0;
+}
+
+#viewport {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#enter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--crypt-void) 88%, black);
+  border: 0;
+  color: var(--biolume-gold);
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+#enter[hidden] {
+  display: none;
+}
+
+.inspector {
+  border-left: 1px solid color-mix(in srgb, var(--biolume-gold) 18%, transparent);
+  background: color-mix(in srgb, var(--crypt-void) 60%, var(--nave-indigo));
+  padding: 0.6rem;
+  overflow: auto;
+  min-width: 0;
+}
+
+.inspector h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--biolume-gold);
+  font-weight: 600;
+}
+
+.inspector-body label {
+  display: block;
+  font-size: 0.65rem;
+  margin: 0.45rem 0 0.15rem;
+  color: color-mix(in srgb, var(--vellum-bone) 75%, transparent);
+}
+
+.inspector-body .mod-badge {
+  color: var(--spore-cyan);
+  margin-left: 0.35rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
+.inspector-body input[type="text"],
+.inspector-body input[type="number"],
+.inspector-body select {
+  width: 100%;
+  background: var(--crypt-void);
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 25%, transparent);
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.inspector-body input[type="range"] {
+  width: 100%;
+}
+
+.muted {
+  color: color-mix(in srgb, var(--vellum-bone) 45%, transparent);
+  font-size: 0.7rem;
+}
+
+/* Perform Mode — graph hidden, viewport full (§7.3) */
+#app.mode-perform .palette,
+#app.mode-perform .graph-pane,
+#app.mode-perform .inspector {
+  display: none;
+}
+
+#app.mode-perform {
+  grid-template-columns: 1fr;
+}
+
+#app.mode-perform .workspace {
+  grid-template-columns: 1fr;
+}
+
+#app.mode-perform .viewport-pane {
+  position: absolute;
+  inset: var(--chrome-h) 0 0 0;
+}
+
+.perform-hud {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: none; /* edit mode: never show BLACK / perform controls */
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Only visible in Perform Mode (§7.3 — graph hidden, transport chrome on) */
+#app.mode-perform .perform-hud {
+  display: flex;
+  pointer-events: auto;
+}
+
+.perform-hud[hidden] {
+  display: none !important;
+}
+
+.perform-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.perform-control {
+  background: color-mix(in srgb, var(--crypt-void) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 30%, transparent);
+  padding: 0.4rem 0.55rem;
+  min-width: 8rem;
+  backdrop-filter: blur(4px);
+}
+
+.perform-control label {
+  display: block;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--biolume-gold);
+  margin-bottom: 0.2rem;
+}
+
+.perform-control input[type="range"] {
+  width: 100%;
+}
+
+.panic {
+  background: color-mix(in srgb, var(--kenotic-rose) 25%, var(--crypt-void));
+  border: 1px solid var(--kenotic-rose);
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+#app.blackout #viewport {
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+
+/* Arrival Law probe panel (M1 exit) */
+.arrival-probe {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--biolume-gold) 22%, transparent);
+}
+
+.probe-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spore-cyan);
+  font-weight: 600;
+}
+
+.probe-blurb {
+  margin: 0 0 0.5rem;
+  font-size: 0.6rem;
+  line-height: 1.35;
+}
+
+.arrival-probe label {
+  display: block;
+  font-size: 0.65rem;
+  margin: 0.4rem 0 0.15rem;
+  color: color-mix(in srgb, var(--vellum-bone) 75%, transparent);
+}
+
+.arrival-probe select,
+.arrival-probe input[type="number"] {
+  width: 100%;
+  background: var(--crypt-void);
+  border: 1px solid color-mix(in srgb, var(--spore-cyan) 30%, transparent);
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.probe-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.45rem !important;
+}
+
+.probe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.55rem 0;
+}
+
+.probe-actions button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--spore-cyan) 45%, transparent);
+  color: var(--spore-cyan);
+  font: inherit;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.45rem;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.probe-actions button:hover {
+  background: color-mix(in srgb, var(--spore-cyan) 12%, transparent);
+}
+
+.probe-readout {
+  margin: 0;
+  font-size: 0.62rem;
+}
+
+.probe-readout > div {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.25rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vellum-bone) 8%, transparent);
+}
+
+.probe-readout dt {
+  color: color-mix(in srgb, var(--vellum-bone) 50%, transparent);
+  margin: 0;
+}
+
+.probe-readout dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.probe-readout .mono {
+  font-family: inherit;
+}
+
+.probe-readout .small {
+  font-size: 0.55rem;
+  opacity: 0.85;
+}
+
+.probe-readout .st-pending {
+  color: var(--biolume-gold);
+}
+.probe-readout .st-fresh {
+  color: var(--spore-cyan);
+}
+.probe-readout .st-error {
+  color: var(--kenotic-rose);
+}
+.probe-readout .err {
+  color: var(--kenotic-rose);
+}
+
+#app.mode-perform .arrival-probe {
+  display: none;
+}

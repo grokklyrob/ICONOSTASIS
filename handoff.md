@@ -1,49 +1,54 @@
-# Handoff — ICONOSTASIS M1 Instrument (post-M0)
+# Handoff — ICONOSTASIS (paused after M1)
 
 **Date:** 2026-08-08  
 **Persona:** bitmonk  
 **Spec:** `architecture.md` Draft **v0.3** (frozen; no silent amendments)  
 **Sequencing:** `CRITICAL_PATH.md`  
 **Process:** `AGENTS.md` invariants bind every change  
-**M0 exit:** `reviews/m0-exit.md` — **accepted**
 
-This document is enough to resume **exactly** where the last session stopped.
+**Status: DEVELOPMENT PAUSED** after M1 acceptance. Do not open M2a until bitmonk resumes.
+
+| Exit | Record |
+|---|---|
+| **M0** | `reviews/m0-exit.md` — accepted |
+| **M1** | `reviews/m1-exit.md` — **accepted 2026-08-08** |
+
+This document is enough to resume **exactly** where work stopped.
 
 ---
 
 ## 1. Where we left off
 
-### Milestone: **M0 — Seed** (§18) — **CLOSED**
+### Milestone: **M0 — Seed** — CLOSED  
+### Milestone: **M1 — Instrument** — **CLOSED** (accepted)
 
-| Deliverable | Status |
-|---|---|
-| Monorepo scaffold (§17) | **Done** |
-| Engine core: ports, graph, dirty pull-cook, modulation edges | **Done** |
-| Six operators | **Done** |
-| `seraph.bin` loader + decimation + async PointCloud | **Done** |
-| `graph.json` round-trip + unknown fields | **Done** |
-| Demo shell: canvas + audio + patched seraph | **Done** |
-| Formal exit | **`reviews/m0-exit.md`** |
-
-### Milestone: **M1 — Instrument** (§18) — **IN PROGRESS**
-
-*Demo: compose and perform a one-station piece live; show synthetic async policies under probe.*
-
-Exit gate (CRITICAL_PATH): all **31 non-GEN** catalog ops; Radiance Stack; measured tier + point governor; OPFS + `.icx`; Perform v0; **synthetic async operator** proves Arrival Law **before any real adapter**.
+*Demo (accepted): compose and perform a one-station piece live; synthetic async policies under probe.*
 
 | M1 step | Status |
 |---|---|
-| **M1.1** Async arrival + `TEST/SyntheticAsync` | **Landed** — pure helpers + probe op; not in net-31 |
-| **M1.2** Measured tier + point governor | **Landed** — `tier/*`, PointCloud honors governor |
-| **M1.3** Radiance Stack remainder | **Landed** — Godrays/CA/Grain/Vignette + ToneMap on Render + tier bypass |
-| **M1.4** Non-GEN catalog batches | **Next** |
-| M1.5–M1.6 | Pending |
+| M1.1 Async arrival + `TEST/SyntheticAsync` | Done |
+| M1.2 Measured tier + point governor | Done |
+| M1.3 Radiance Stack remainder | Done |
+| M1.4 Non-GEN catalog (net-31) | Done |
+| M1.5 Taint + `.icx` + OPFS | Done |
+| M1.6 App editor + Perform v0 | Done |
+| M1 exit live sign-off | **Accepted** (`reviews/m1-exit.md`) |
 
-### Explicit non-started (M1 remainder / later)
+### Explicit next (when resuming)
 
-- M2+ (GEN boundary, story, player, publish)
-- Playwright / golden frames
-- Spec amendments (none required yet)
+**M2a — GEN boundary** (`CRITICAL_PATH.md`):
+
+- `packages/gen`: SecretRef single fetch boundary, taint already in engine persist  
+- Spend ceiling plumbing, arming hooks  
+- First live `openai-compat` (incl. local Ollama)  
+- App: Provider Registry + Vault UI hooks  
+
+Do **not** start real adapters breadth (M2b) until M2a boundary API is frozen or owned by one agent.
+
+### Deferred polish (optional, not M2)
+
+- Shrine collapse, field thumbnails, flash-count limiter, music transport  
+- Deeper GPU for SDF/particles/glyph/instancer  
 
 ---
 
@@ -54,119 +59,97 @@ cd C:\Users\color\projects\iconostasis
 pnpm install
 pnpm --filter @iconostasis/engine test
 pnpm --filter @iconostasis/engine typecheck
-pnpm demo                                # M0 seraph still works
+pnpm --filter @iconostasis/app typecheck
+pnpm app                                 # editor + Arrival probe
+# optional smoke:
+pnpm demo                                # M0 thin seraph shell
 ```
 
-**Asset paths (canonical):**
+**Expect:** engine **146** tests green (as of M1 exit); app store tests green.
 
-- `assets/seraph.bin` — 288k points
-- `assets/test-drone.ogg` — single `.ogg` extension
+**Asset paths:**
+
+- `assets/seraph.bin` — 288k points  
+- `assets/test-drone.ogg`  
+
+**App (`pnpm app`):** Enter → seraph + drone; Perform hides graph; Inspector bottom = Arrival probe.
 
 ---
 
 ## 3. Binding rules (do not re-litigate)
 
-1. `architecture.md` v0.3 is sole product truth; cite § numbers.
-2. **No SPEC AMENDMENT** unless a v0.3 requirement is proven impossible — then stop and emit `SPEC AMENDMENT PROPOSAL` per `AGENTS.md`.
+1. `architecture.md` v0.3 is sole product truth; cite § numbers.  
+2. **No SPEC AMENDMENT** unless a v0.3 requirement is proven impossible — then `SPEC AMENDMENT PROPOSAL` per `AGENTS.md`.  
 3. Hard invariants:
    - No secrets on serialize/export/publish paths  
    - GEN never blocks a frame (`cook` is `void`)  
-   - Exported player never calls AI (N/A until M3)  
+   - Exported player never calls AI  
    - WebGL2 first-class; WebGPU never required  
    - `packages/engine` UI-free, headless-testable  
-   - Flash limiter always on in player path (rise-rate clamp real; flash-count TODO §16.4)
-4. **M1 worktrees (CRITICAL_PATH):** two max later — engine vs app against published engine API. Prefer single agent until app shell exists. No multi-writer inside engine.
-5. Ask before any dependency **not** listed in §17.
-6. Step-by-step: plan → implement one slice → green tests → stop for review unless bitmonk says otherwise.
+   - Flash limiter always on in player path (rise-rate real; flash-count TODO §16.4)  
+4. **Port freeze** still binds: `geometry` / `bloom` ports on M0 graph JSON.  
+5. Ask before any dependency **not** listed in §17.  
+6. Prefer single agent on gen boundary files through M2a.
 
-### Approved plan flags (M0, still binding)
+### Approved stack notes
 
-| Flag | Disposition |
+| Item | Disposition |
 |---|---|
-| pnpm | approved |
-| `apps/m0-demo` | approved (smoke shell; not the M1 editor) |
-| `three` in engine; no Playwright in M0; hand-rolled / three-addons bloom | approved |
-| Built-in points draw on `OUT/Render` | M0 bridge; M1 Assemble/MAT must not break frozen ports |
-| **Port freeze:** `geometry` / `bloom` ports | **binding** |
-| Flash limiter | real rise-rate clamp |
-| Modulation JSON | top-level `wires[]` + `modulations[]`; Appendix B sugar on read only |
-| Audio filename | `assets/test-drone.ogg` |
+| pnpm workspace | approved |
+| `three` in engine; fflate for `.icx` | approved (§17) |
+| Vanilla TS app (no React Flow) | approved for M1 shell |
+| `apps/m0-demo` | kept as thin smoke shell |
 
 ---
 
-## 4. M1 ordered plan (engine-first spine)
-
-Do not reorder past a gate without bitmonk go-ahead.
-
-| Step | Focus | Gate / note |
-|---|---|---|
-| **M1.1** | Async arrival runtime + **`TEST/SyntheticAsync`** probe | CRITICAL_PATH: Arrival Law (status, lastGoodValue, stream vs replace text, audio queue-to-cue, GPU fade cap/queue, `cacheScope`, failure + fake latency) **before any real adapter** |
-| **M1.2** | Measured tier probe + **point governor** | §8.4 scene-total budgets; PointCloud / future emitters honor remaining |
-| **M1.3** | Radiance Stack remainder | Godrays, ChromaticAberration, Grain, Vignette; ToneMap on `OUT/Render`; tier auto-bypass |
-| **M1.4** | Non-GEN catalog batches | SIG → SRC remainder → MAT → GEO → FX remainder → LIT → `OUT/AudioOut` (31 total incl. M0 six) |
-| **M1.5** | Taint gate + `.icx` pack/unpack + OPFS autosave | §12; secrets never serialize |
-| **M1.6** | `packages/app` graph editor shell + Perform v0 | Against engine API; §7.3 |
-| **M1 exit** | One-station compose + perform + synthetic async under probe | §18 italic demo |
-
-**M0 six already count:** Time, AudioIn, LFO, PointCloud, Bloom, Render → **25 operators still to land** for the 31 non-GEN total (plus TEST synthetic, which is **not** in the 31).
-
----
-
-## 5. Repo layout (current)
+## 4. Repo map (post-M1)
 
 ```
 iconostasis/
-  architecture.md
-  CRITICAL_PATH.md
-  AGENTS.md / agents.md
-  handoff.md
-  reviews/m0-exit.md
-  package.json / pnpm-workspace.yaml / tsconfig.base.json
-  assets/seraph.bin , test-drone.ogg
-  packages/engine/          # @iconostasis/engine
-  apps/m0-demo/             # thin seraph shell
+  architecture.md · CRITICAL_PATH.md · AGENTS.md · handoff.md
+  reviews/m0-exit.md · reviews/m1-exit.md · reviews/m1-exit-checklist.md
+  assets/seraph.bin · test-drone.ogg
+  packages/engine/     # cook, 31 ops + TEST probe, tier, persist, render
+  packages/app/        # editor + Perform + Arrival probe
+  apps/m0-demo/        # original seraph smoke
 ```
 
-M1 will add: `packages/engine/src/async/*`, more operators, tier/governor, persist/icx, later `packages/app`.
+M2 will add `packages/gen` (and later helper, story, player, publish).
 
 ---
 
-## 6. Commands cheat sheet
+## 5. Commands
 
 ```bash
 pnpm install
-pnpm test
-pnpm typecheck
+pnpm test                          # engine
+pnpm --filter @iconostasis/app test
+pnpm typecheck                     # engine
+pnpm --filter @iconostasis/app typecheck
+pnpm app
 pnpm demo
-
-pnpm --filter @iconostasis/engine test
-pnpm --filter @iconostasis/engine typecheck
-pnpm --filter @iconostasis/m0-demo typecheck
-pnpm --filter @iconostasis/m0-demo build
 ```
 
 ---
 
-## 7. Known pitfalls
+## 6. Known pitfalls
 
-1. **pnpm only.**
-2. Demo aliases `@iconostasis/engine` → `packages/engine/src/index.ts`.
-3. Orphan ops never cook if not on a pull path from `OUT/*`.
-4. `ThreeWebGLBackend` on the barrel pulls `three` when index is imported.
-5. Do not JS-bundle `seraph.bin`.
-6. Port freeze still binds M1 graph fixtures.
-
----
-
-## 8. Session process
-
-1. Plan the slice (flags if any).  
-2. Test-first; colocated cook-order tests per operator.  
-3. Green suite → stop for review.  
-4. No real AI adapters until M1.1 synthetic async is proven and M2a boundary exists.
-
-**Resume at:** **M1.4** — remaining non-GEN catalog ops (SIG → SRC → MAT → GEO → FX/Feedback → LIT → AudioOut).
+1. **pnpm only** — not `npm app`.  
+2. App aliases `@iconostasis/engine` → engine `src/index.ts`.  
+3. Graph pan: **Alt+drag** or **MMB**; **F** = fit view.  
+4. Large `seraph.bin` must not be JS-bundled (Vite `publicDir` = repo `assets/`).  
+5. Arrival probe is edit-mode only (hidden in Perform).  
 
 ---
 
-*a Manalive Tech project — handoff for ICONOSTASIS M1*
+## 7. Session process that worked
+
+1. Milestone steps with green tests before advancing.  
+2. Live bitmonk demo for §18 italic acceptance lines.  
+3. Handoff + exit records under `reviews/`.  
+
+**On resume:** read this file + `reviews/m1-exit.md` + `CRITICAL_PATH.md` § M2a; plan M2a boundary before writing adapters.
+
+---
+
+*a Manalive Tech project — handoff (paused after M1)*

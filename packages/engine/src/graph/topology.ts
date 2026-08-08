@@ -29,14 +29,24 @@ export function buildDownstreamAdjacency(
 
 /**
  * Detect directed cycles in the wire graph.
- * Modulation edges are not data deps for cycle purposes in M0
- * (they read signal outputs but do not form Feedback).
+ * Cycles through FX/Feedback are allowed (§7.1) — Feedback nodes are removed
+ * from the adjacency used for cycle detection (they break the loop).
+ * Modulation edges are not data deps for cycle purposes.
  */
 export function assertAcyclic(
   doc: Pick<GraphDocument, "nodes" | "wires">,
 ): void {
   const nodeIds = new Set(doc.nodes.map((n) => n.id));
-  const adj = buildDownstreamAdjacency(doc.wires);
+  const feedbackIds = new Set(
+    doc.nodes
+      .filter((n) => n.type === "FX/Feedback")
+      .map((n) => n.id),
+  );
+  // Drop wires that enter or leave Feedback — Feedback is the legal cycle break.
+  const wiresForCycle = doc.wires.filter(
+    (w) => !feedbackIds.has(w.from.opId) && !feedbackIds.has(w.to.opId),
+  );
+  const adj = buildDownstreamAdjacency(wiresForCycle);
 
   const WHITE = 0;
   const GRAY = 1;

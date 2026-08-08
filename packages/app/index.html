@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ICONOSTASIS — Instrument</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="mode-edit">
+      <header class="chrome">
+        <div class="brand">ICONOSTASIS</div>
+        <div class="chrome-actions">
+          <button type="button" id="btn-add" title="Add operator (Tab)">
+            Add
+          </button>
+          <button type="button" id="btn-save" title="Download .icx">
+            Save
+          </button>
+          <label class="file-label">
+            Open
+            <input id="btn-open" type="file" accept=".icx,application/zip" hidden />
+          </label>
+          <button type="button" id="btn-perform" title="Perform Mode">
+            Perform
+          </button>
+          <button type="button" id="btn-edit" hidden title="Back to edit">
+            Edit
+          </button>
+        </div>
+        <div id="status" class="status">loading…</div>
+      </header>
+
+      <aside id="palette" class="palette" aria-label="Operator palette">
+        <input
+          id="palette-search"
+          type="search"
+          placeholder="Search operators…"
+          autocomplete="off"
+        />
+        <div id="palette-list" class="palette-list"></div>
+      </aside>
+
+      <main class="workspace">
+        <section id="graph-pane" class="graph-pane" aria-label="Graph editor">
+          <svg id="graph-svg" class="graph-svg" tabindex="0">
+            <defs>
+              <marker
+                id="arrow"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--biolume-gold)" />
+              </marker>
+            </defs>
+            <g id="graph-world">
+              <g id="wires-layer"></g>
+              <g id="nodes-layer"></g>
+              <path id="wire-draft" class="wire-draft" d="" hidden></path>
+            </g>
+          </svg>
+          <div class="graph-hint">
+            Drag ports to wire · Tab add · Delete removes · Wheel zoom · Alt-drag
+            or MMB pan · F fit view
+          </div>
+        </section>
+
+        <section id="viewport-pane" class="viewport-pane" aria-label="Viewport">
+          <canvas id="viewport"></canvas>
+          <button id="enter" type="button">Enter</button>
+        </section>
+
+        <aside id="inspector" class="inspector" aria-label="Inspector">
+          <h2>Inspector</h2>
+          <div id="inspector-body" class="inspector-body">
+            <p class="muted">Select an operator</p>
+          </div>
+          <div id="arrival-probe" class="arrival-probe" aria-label="Arrival Law probe"></div>
+        </aside>
+      </main>
+
+      <section id="perform-hud" class="perform-hud" hidden aria-label="Perform">
+        <div id="perform-controls" class="perform-controls"></div>
+        <button type="button" id="btn-panic" class="panic">Black</button>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -4,6 +4,7 @@
  */
 
 import type { RuntimeGraph } from "../graph/graph.js";
+import { FX_FEEDBACK_TYPE } from "../operators/fx/feedback.js";
 import type { OperatorRegistry } from "../registry/registry.js";
 import type {
   CookContext,
@@ -79,10 +80,13 @@ export class GraphEvaluator {
     this.visiting.add(opId);
 
     const op = this.graph.getInstance(opId);
+    const isFeedback = op.type === FX_FEEDBACK_TYPE;
 
-    // Pull data-wire dependencies first.
-    for (const wire of this.graph.getWiresTo(opId)) {
-      this.ensureCooked(wire.from.opId);
+    // Feedback breaks cycles: do not pull data-wire deps before publishing delay.
+    if (!isFeedback) {
+      for (const wire of this.graph.getWiresTo(opId)) {
+        this.ensureCooked(wire.from.opId);
+      }
     }
     // Modulation sources must also be cooked so signal values exist.
     for (const mod of this.graph.getModulationsTo(opId)) {
@@ -90,15 +94,51 @@ export class GraphEvaluator {
     }
 
     if (!op.dirty) {
-      // Clean subtree: reuse last outputs; do not recook.
       this.cookedThisFrame.add(opId);
       this.visiting.delete(opId);
       return;
     }
 
-    this.cookOne(op);
+    if (isFeedback) {
+      this.cookFeedback(op);
+    } else {
+      this.cookOne(op);
+    }
     this.cookedThisFrame.add(opId);
     this.visiting.delete(opId);
+  }
+
+  /**
+   * FX/Feedback: publish previous-frame value, then sample input for next frame.
+   * Input subgraph is pulled after the delayed output is available (§7.1).
+   */
+  private cookFeedback(op: OperatorInstance): void {
+    const mods = this.graph.getModulationsTo(op.id);
+    const effective = resolveEffectiveParams(op.params, mods, (fromOpId, port) =>
+      this.readPort(fromOpId, port),
+    );
+
+    let opOutputs = this.outputStore.get(op.id);
+    if (!opOutputs) {
+      opOutputs = new Map();
+      this.outputStore.set(op.id, opOutputs);
+    }
+
+    // 1) Publish delayed value without needing current input.
+    const publishCtx = this.makeCtx(op, effective, new Map(), opOutputs);
+    op.cook(publishCtx);
+
+    // 2) Pull input deps now (cycle is broken by delay) and sample.
+    const inputIndex = new Map<string, unknown>();
+    for (const wire of this.graph.getWiresTo(op.id)) {
+      this.ensureCooked(wire.from.opId);
+      inputIndex.set(wire.to.port, this.readPort(wire.from.opId, wire.from.port));
+    }
+    const sampleCtx = this.makeCtx(op, effective, inputIndex, opOutputs);
+    // Second cook call with inputs present — Feedback samples into delay buffer.
+    op.cook(sampleCtx);
+
+    clearDirtyAfterCook(op);
   }
 
   private cookOne(op: OperatorInstance): void {
@@ -118,11 +158,26 @@ export class GraphEvaluator {
       this.outputStore.set(op.id, opOutputs);
     }
 
-    const ctx: CookContext = {
+    const ctx = this.makeCtx(op, effective, inputIndex, opOutputs);
+    const result: void = op.cook(ctx);
+    void result;
+
+    clearDirtyAfterCook(op);
+  }
+
+  private makeCtx(
+    op: OperatorInstance,
+    effective: Record<string, ParamValue>,
+    inputIndex: Map<string, unknown>,
+    opOutputs: Map<string, unknown>,
+  ): CookContext {
+    return {
       time: this.frame.time,
       delta: this.frame.delta,
       frame: this.frame.frame,
       audio: this.frame.audio,
+      input: this.frame.input,
+      midi: this.frame.midi,
       loadAsset: this.host.loadAsset,
       renderBackend: this.host.renderBackend,
       scheduleDeferred: this.host.scheduleDeferred,
@@ -142,11 +197,5 @@ export class GraphEvaluator {
         opOutputs.set(port, value);
       },
     };
-
-    // AMD-01: cook returns void; evaluator never awaits.
-    const result: void = op.cook(ctx);
-    void result;
-
-    clearDirtyAfterCook(op);
   }
 }
