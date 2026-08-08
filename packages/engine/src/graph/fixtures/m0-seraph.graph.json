@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "time1",
+      "type": "SRC/Time",
+      "params": { "speed": 1 },
+      "position": [40, 80]
+    },
+    {
+      "id": "audio1",
+      "type": "SRC/AudioIn",
+      "params": { "smoothing": 0.65, "fftSize": 2048 },
+      "position": [40, 220]
+    },
+    {
+      "id": "lfo1",
+      "type": "SIG/LFO",
+      "params": {
+        "waveform": "sine",
+        "frequency": 0.08,
+        "amp": 0.006,
+        "offset": 0.018,
+        "phase": 0
+      },
+      "position": [280, 80]
+    },
+    {
+      "id": "pc1",
+      "type": "GEO/PointCloud",
+      "params": {
+        "assetPath": "assets/seraph.bin",
+        "maxPoints": 288000,
+        "pointSize": 0.016,
+        "displacement": 0,
+        "displacementScale": 1,
+        "cacheScope": "station"
+      },
+      "position": [520, 160]
+    },
+    {
+      "id": "bloom1",
+      "type": "FX/Bloom",
+      "params": {
+        "threshold": 0.72,
+        "strength": 1.4,
+        "radius": 0.7,
+        "enabled": true
+      },
+      "position": [520, 320]
+    },
+    {
+      "id": "out1",
+      "type": "OUT/Render",
+      "params": {
+        "fov": 50,
+        "exposure": 1,
+        "clearColor": "#0d0d14"
+      },
+      "position": [780, 220]
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_pc_geom",
+      "from": { "opId": "pc1", "port": "geometry" },
+      "to": { "opId": "out1", "port": "geometry" }
+    },
+    {
+      "id": "w_bloom_field",
+      "from": { "opId": "bloom1", "port": "field" },
+      "to": { "opId": "out1", "port": "bloom" }
+    }
+  ],
+  "modulations": [
+    {
+      "id": "m_band_disp",
+      "from": { "opId": "audio1", "port": "bandLow" },
+      "to": { "opId": "pc1", "param": "displacement" },
+      "map": { "in": [0, 1], "out": [0, 0.15] }
+    },
+    {
+      "id": "m_band_bloom",
+      "from": { "opId": "audio1", "port": "bandHigh" },
+      "to": { "opId": "bloom1", "param": "strength" },
+      "map": { "in": [0, 1], "out": [1.0, 2.2] }
+    },
+    {
+      "id": "m_lfo_size",
+      "from": { "opId": "lfo1", "port": "out" },
+      "to": { "opId": "pc1", "param": "pointSize" },
+      "map": { "in": [0.012, 0.024], "out": [0.012, 0.024] }
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ICONOSTASIS — M0 Seed</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --crypt-void: #0d0d14;
+        --biolume-gold: #ffd369;
+        --vellum-bone: #f5f0e1;
+        --spore-cyan: #00d9ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--crypt-void);
+        color: var(--vellum-bone);
+        font-family: "Segoe UI", system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #enter {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--crypt-void) 88%, black);
+        border: 0;
+        color: var(--biolume-gold);
+        font-size: 1.25rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      #enter[hidden] {
+        display: none;
+      }
+      #hud {
+        position: absolute;
+        left: 1rem;
+        bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        pointer-events: none;
+      }
+      #status {
+        font-size: 0.75rem;
+        letter-spacing: 0.06em;
+        color: color-mix(in srgb, var(--vellum-bone) 70%, transparent);
+        max-width: 36rem;
+      }
+      #music {
+        pointer-events: auto;
+        color: var(--spore-cyan);
+        font-size: 0.7rem;
+      }
+      #music[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="viewport"></canvas>
+      <button id="enter" type="button">Enter</button>
+      <div id="hud">
+        <div id="status">click Enter to begin</div>
+        <input id="music" type="file" accept="audio/*" hidden />
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
