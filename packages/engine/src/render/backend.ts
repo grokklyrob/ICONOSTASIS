@@ -1,10 +1,14 @@
 /**
  * Render backend abstraction — headless-mockable (§17, packages/engine UI-free).
- * Three.js WebGL implementation lands with the demo shell (Step 6).
  */
 
 import type { PointCloudGeometry } from "../assets/geometry.js";
 import type { BloomPassState } from "./bloomPass.js";
+import type { ChromaticAberrationPassState } from "./chromaticAberrationPass.js";
+import type { GodraysPassState } from "./godraysPass.js";
+import type { GrainPassState } from "./grainPass.js";
+import type { ToneMapCurve } from "./toneMap.js";
+import type { VignettePassState } from "./vignettePass.js";
 
 export interface DrawPointsCall {
   geometry: PointCloudGeometry;
@@ -16,6 +20,12 @@ export interface RenderBackend {
   beginFrame(clearColor: string): void;
   drawPoints(call: DrawPointsCall): void;
   applyBloom(state: BloomPassState): void;
+  /** Optional Radiance Stack passes — backends may no-op if unsupported. */
+  applyGodrays?(state: GodraysPassState): void;
+  applyChromaticAberration?(state: ChromaticAberrationPassState): void;
+  applyGrain?(state: GrainPassState, timeSeconds: number): void;
+  applyVignette?(state: VignettePassState): void;
+  applyToneMap?(curve: ToneMapCurve): void;
   endFrame(): void;
   dispose(): void;
 }
@@ -26,16 +36,35 @@ export class MockRenderBackend implements RenderBackend {
     clearColor: string;
     draws: DrawPointsCall[];
     blooms: BloomPassState[];
+    godrays: GodraysPassState[];
+    chromaticAberrations: ChromaticAberrationPassState[];
+    grains: GrainPassState[];
+    vignettes: VignettePassState[];
+    toneMaps: ToneMapCurve[];
   }> = [];
 
   private current: {
     clearColor: string;
     draws: DrawPointsCall[];
     blooms: BloomPassState[];
+    godrays: GodraysPassState[];
+    chromaticAberrations: ChromaticAberrationPassState[];
+    grains: GrainPassState[];
+    vignettes: VignettePassState[];
+    toneMaps: ToneMapCurve[];
   } | null = null;
 
   beginFrame(clearColor: string): void {
-    this.current = { clearColor, draws: [], blooms: [] };
+    this.current = {
+      clearColor,
+      draws: [],
+      blooms: [],
+      godrays: [],
+      chromaticAberrations: [],
+      grains: [],
+      vignettes: [],
+      toneMaps: [],
+    };
   }
 
   drawPoints(call: DrawPointsCall): void {
@@ -53,6 +82,43 @@ export class MockRenderBackend implements RenderBackend {
       throw new Error("MockRenderBackend.applyBloom outside beginFrame");
     }
     this.current.blooms.push({ ...state });
+  }
+
+  applyGodrays(state: GodraysPassState): void {
+    if (!this.current) {
+      throw new Error("MockRenderBackend.applyGodrays outside beginFrame");
+    }
+    this.current.godrays.push({ ...state });
+  }
+
+  applyChromaticAberration(state: ChromaticAberrationPassState): void {
+    if (!this.current) {
+      throw new Error(
+        "MockRenderBackend.applyChromaticAberration outside beginFrame",
+      );
+    }
+    this.current.chromaticAberrations.push({ ...state });
+  }
+
+  applyGrain(state: GrainPassState, _timeSeconds: number): void {
+    if (!this.current) {
+      throw new Error("MockRenderBackend.applyGrain outside beginFrame");
+    }
+    this.current.grains.push({ ...state });
+  }
+
+  applyVignette(state: VignettePassState): void {
+    if (!this.current) {
+      throw new Error("MockRenderBackend.applyVignette outside beginFrame");
+    }
+    this.current.vignettes.push({ ...state });
+  }
+
+  applyToneMap(curve: ToneMapCurve): void {
+    if (!this.current) {
+      throw new Error("MockRenderBackend.applyToneMap outside beginFrame");
+    }
+    this.current.toneMaps.push(curve);
   }
 
   endFrame(): void {

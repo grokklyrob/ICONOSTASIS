@@ -9,6 +9,8 @@ export interface BloomPassState {
   threshold: number;
   strength: number;
   radius: number;
+  /** Set by Radiance Stack resolve for wayside half-res (§8.4). */
+  halfRes?: boolean;
 }
 
 export function isBloomPassState(value: unknown): value is BloomPassState {

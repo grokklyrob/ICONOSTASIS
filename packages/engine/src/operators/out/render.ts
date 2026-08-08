@@ -1,9 +1,11 @@
 /**
- * OUT/Render — pull sink, built-in points draw, bloom consume, flash limiter
- * (architecture.md §8.1–§8.2, §16.4, Appendix A, §18 M0).
+ * OUT/Render — pull sink, points draw, Radiance Stack, flash limiter
+ * (architecture.md §8.1–§8.2, §8.4, §16.4, Appendix A).
  *
  * M0 composition bridge: draws GEO/PointCloud geometry directly (no Assemble /
- * MAT yet). Port name `geometry` is frozen for M1 replacement without migration.
+ * MAT yet). Port name `geometry` and `bloom` are frozen for M1 without migration.
+ * Additional Radiance ports: godrays, chromaticAberration, grain, vignette.
+ * ToneMap lives here (not a separate FX catalog op).
  *
  * Flash limiter is always on — rise-rate clamp is real, not a pass-through.
  */
@@ -18,12 +20,30 @@ import {
   createBloomPassState,
 } from "../../render/bloomPass.js";
 import {
+  isChromaticAberrationPassState,
+  type ChromaticAberrationPassState,
+} from "../../render/chromaticAberrationPass.js";
+import {
+  isGodraysPassState,
+  type GodraysPassState,
+} from "../../render/godraysPass.js";
+import {
+  isGrainPassState,
+  type GrainPassState,
+} from "../../render/grainPass.js";
+import {
   applyRiseRateClamp,
   DEFAULT_FLASH_LIMITER_CONFIG,
   estimateLumaProxy,
   limitedExposureScale,
   type FlashLimiterState,
 } from "../../render/flashLimiter.js";
+import { resolveRadianceStack } from "../../render/radianceStack.js";
+import { parseToneMapCurve } from "../../render/toneMap.js";
+import {
+  isVignettePassState,
+  type VignettePassState,
+} from "../../render/vignettePass.js";
 import type {
   OperatorFactory,
   OperatorInstance,
@@ -39,9 +59,17 @@ export const renderFactory: OperatorFactory = {
   type: OUT_RENDER_TYPE,
   family: "OUT",
   inputs: [
-    // Frozen port name — M1 MAT/Assemble must still feed this inlet.
+    // Frozen port names — M1 MAT/Assemble / M0 bloom must still feed these.
     { id: "geometry", type: "geometry" },
     { id: "bloom", type: "field", label: "bloom (optional)" },
+    { id: "godrays", type: "field", label: "godrays (optional)" },
+    {
+      id: "chromaticAberration",
+      type: "field",
+      label: "chromaticAberration (optional)",
+    },
+    { id: "grain", type: "field", label: "grain (optional)" },
+    { id: "vignette", type: "field", label: "vignette (optional)" },
   ],
   outputs: [],
   params: [
@@ -71,6 +99,14 @@ export const renderFactory: OperatorFactory = {
       modulatable: false,
       exposable: true,
     },
+    {
+      id: "toneMap",
+      type: "enum",
+      default: "aces",
+      enumValues: ["aces", "goldLeaf"],
+      modulatable: false,
+      exposable: true,
+    },
   ],
   create(id, params): OperatorInstance {
     const flashState: FlashLimiterState = { prevLuma: 0 };
@@ -92,9 +128,14 @@ export const renderFactory: OperatorFactory = {
           ctx.getParam("clearColor") ?? DEFAULT_CLEAR_COLOR,
         );
         const safeExposure = Number.isFinite(exposure) ? exposure : 1;
+        const toneMap = parseToneMapCurve(ctx.getParam("toneMap"));
 
         const geomRaw = ctx.getInput("geometry");
         const bloomRaw = ctx.getInput("bloom");
+        const godraysRaw = ctx.getInput("godrays");
+        const caRaw = ctx.getInput("chromaticAberration");
+        const grainRaw = ctx.getInput("grain");
+        const vignetteRaw = ctx.getInput("vignette");
 
         const geometry: PointCloudGeometry | undefined = isPointCloudGeometry(
           geomRaw,
@@ -102,14 +143,41 @@ export const renderFactory: OperatorFactory = {
           ? geomRaw
           : undefined;
 
-        const bloom: BloomPassState = isBloomPassState(bloomRaw)
+        const bloomIn: BloomPassState | undefined = isBloomPassState(bloomRaw)
           ? bloomRaw
-          : createBloomPassState({ enabled: false, strength: 0 });
+          : undefined;
+        const godraysIn: GodraysPassState | undefined = isGodraysPassState(
+          godraysRaw,
+        )
+          ? godraysRaw
+          : undefined;
+        const caIn: ChromaticAberrationPassState | undefined =
+          isChromaticAberrationPassState(caRaw) ? caRaw : undefined;
+        const grainIn: GrainPassState | undefined = isGrainPassState(grainRaw)
+          ? grainRaw
+          : undefined;
+        const vignetteIn: VignettePassState | undefined = isVignettePassState(
+          vignetteRaw,
+        )
+          ? vignetteRaw
+          : undefined;
+
+        const stack = resolveRadianceStack({
+          bloom: bloomIn,
+          godrays: godraysIn,
+          chromaticAberration: caIn,
+          grain: grainIn,
+          vignette: vignetteIn,
+          toneMap,
+          tier: ctx.deviceTier,
+        });
 
         // --- Flash limiter (always on) §16.4 rise-rate damper ---
+        const bloomForLuma = stack.bloom;
         const targetLuma = estimateLumaProxy({
           exposure: safeExposure,
-          bloomStrength: bloom.enabled ? bloom.strength : 0,
+          bloomStrength:
+            bloomForLuma?.enabled === true ? bloomForLuma.strength : 0,
           hasGeometry: geometry !== undefined,
         });
         const limitedLuma = applyRiseRateClamp(
@@ -121,10 +189,14 @@ export const renderFactory: OperatorFactory = {
         flashState.prevLuma = limitedLuma;
         const scale = limitedExposureScale(targetLuma, limitedLuma);
         const limitedExposure = safeExposure * scale;
-        const limitedBloom: BloomPassState = {
-          ...bloom,
-          strength: bloom.strength * scale,
-        };
+
+        const limitedBloom: BloomPassState | undefined = stack.bloom
+          ? {
+              ...stack.bloom,
+              strength: stack.bloom.strength * scale,
+              halfRes: stack.bloomHalfRes,
+            }
+          : undefined;
 
         if (!backend) {
           // Headless / no GPU host: still ran the limiter (state advanced).
@@ -140,8 +212,27 @@ export const renderFactory: OperatorFactory = {
           });
         }
 
-        if (limitedBloom.enabled) {
+        // Fixed Radiance order (§8.2).
+        if (limitedBloom?.enabled) {
           backend.applyBloom(limitedBloom);
+        }
+        if (stack.godrays?.enabled && backend.applyGodrays) {
+          backend.applyGodrays(stack.godrays);
+        }
+        if (
+          stack.chromaticAberration?.enabled &&
+          backend.applyChromaticAberration
+        ) {
+          backend.applyChromaticAberration(stack.chromaticAberration);
+        }
+        if (stack.grain?.enabled && backend.applyGrain) {
+          backend.applyGrain(stack.grain, ctx.time);
+        }
+        if (stack.vignette?.enabled && backend.applyVignette) {
+          backend.applyVignette(stack.vignette);
+        }
+        if (backend.applyToneMap) {
+          backend.applyToneMap(stack.toneMap);
         }
 
         backend.endFrame();

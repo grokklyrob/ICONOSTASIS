@@ -6,6 +6,7 @@ import type { PointCloudGeometry } from "../../assets/geometry.js";
 import { GraphEvaluator } from "../../cook/evaluator.js";
 import { createGraph } from "../../graph/graph.js";
 import { MockRenderBackend } from "../../render/backend.js";
+import { runCapabilityProbe } from "../../tier/probe.js";
 import { OperatorRegistry } from "../../registry/registry.js";
 import type { OperatorInstance } from "../../types/operator.js";
 import { bloomFactory, FX_BLOOM_TYPE } from "../fx/bloom.js";
@@ -188,6 +189,122 @@ describe("OUT/Render", () => {
     expect(b?.enabled).toBe(true);
     // After rise-rate scale, strength may be reduced but still present.
     expect(b?.strength).toBeGreaterThan(0);
+  });
+
+  it("tier auto-bypass: wayside disables grain/godrays; keeps bloom halfRes", () => {
+    const backend = new MockRenderBackend();
+    const geom = makeGeom(1);
+    const registry = new OperatorRegistry();
+    registry.register(makeGeomSourceFactory(geom));
+    registry.register(bloomFactory);
+    registry.register(renderFactory);
+
+    // Wire bloom only; inject other passes via a multi-out test source below.
+    const multiFx = {
+      type: "Test/MultiFx",
+      family: "FX" as const,
+      inputs: [],
+      outputs: [
+        { id: "bloom", type: "field" as const },
+        { id: "godrays", type: "field" as const },
+        { id: "grain", type: "field" as const },
+      ],
+      params: [],
+      create(id: string): OperatorInstance {
+        return {
+          id,
+          type: "Test/MultiFx",
+          family: "FX",
+          params: {},
+          dirty: true,
+          alwaysDirty: true,
+          getOutput: () => undefined,
+          cook(ctx) {
+            ctx.setOutput("bloom", {
+              kind: "bloom",
+              enabled: true,
+              threshold: 0.5,
+              strength: 1.5,
+              radius: 1,
+            });
+            ctx.setOutput("godrays", {
+              kind: "godrays",
+              enabled: true,
+              strength: 0.5,
+              decay: 0.9,
+              monstranceX: 0.5,
+              monstranceY: 0.5,
+              samples: 16,
+            });
+            ctx.setOutput("grain", {
+              kind: "grain",
+              enabled: true,
+              amount: 0.1,
+              speed: 1,
+              mode: "film",
+            });
+          },
+          dispose() {},
+          serialize: () => ({}),
+        };
+      },
+    };
+    registry.register(multiFx);
+
+    const graph = createGraph({
+      schemaVersion: 1,
+      nodes: [
+        { id: "pc", type: "Test/Geom", params: {} },
+        { id: "fx", type: "Test/MultiFx", params: {} },
+        {
+          id: "out",
+          type: OUT_RENDER_TYPE,
+          params: { exposure: 1, toneMap: "goldLeaf" },
+        },
+      ],
+      wires: [
+        {
+          id: "w1",
+          from: { opId: "pc", port: "geometry" },
+          to: { opId: "out", port: "geometry" },
+        },
+        {
+          id: "w2",
+          from: { opId: "fx", port: "bloom" },
+          to: { opId: "out", port: "bloom" },
+        },
+        {
+          id: "w3",
+          from: { opId: "fx", port: "godrays" },
+          to: { opId: "out", port: "godrays" },
+        },
+        {
+          id: "w4",
+          from: { opId: "fx", port: "grain" },
+          to: { opId: "out", port: "grain" },
+        },
+      ],
+      modulations: [],
+    });
+
+    const probe = runCapabilityProbe({
+      medianFrameMs: 40,
+      backend: "webgl2",
+      floatColorBuffer: false,
+      forceTier: "wayside",
+    });
+
+    const evaluator = new GraphEvaluator(graph, registry, {
+      renderBackend: backend,
+      probeResult: probe,
+    });
+    evaluator.tick({ time: 0, delta: 1, frame: 0 });
+
+    expect(backend.lastFrame?.blooms[0]?.enabled).toBe(true);
+    expect(backend.lastFrame?.blooms[0]?.halfRes).toBe(true);
+    expect(backend.lastFrame?.godrays).toHaveLength(0);
+    expect(backend.lastFrame?.grains).toHaveLength(0);
+    expect(backend.lastFrame?.toneMaps).toEqual(["goldLeaf"]);
   });
 
   it("rise-rate flash limiter actually damps a sudden exposure jump", () => {

@@ -76,6 +76,14 @@ export {
   GEO_POINT_CLOUD_TYPE,
   bloomFactory,
   FX_BLOOM_TYPE,
+  godraysFactory,
+  FX_GODRAYS_TYPE,
+  chromaticAberrationFactory,
+  FX_CHROMATIC_ABERRATION_TYPE,
+  grainFactory,
+  FX_GRAIN_TYPE,
+  vignetteFactory,
+  FX_VIGNETTE_TYPE,
   renderFactory,
   OUT_RENDER_TYPE,
   DEFAULT_CLEAR_COLOR,
@@ -157,6 +165,30 @@ export { isPointCloudGeometry } from "./assets/geometry.js";
 
 export type { BloomPassState } from "./render/bloomPass.js";
 export { createBloomPassState, isBloomPassState } from "./render/bloomPass.js";
+export type { GodraysPassState } from "./render/godraysPass.js";
+export {
+  createGodraysPassState,
+  isGodraysPassState,
+} from "./render/godraysPass.js";
+export type { ChromaticAberrationPassState } from "./render/chromaticAberrationPass.js";
+export {
+  createChromaticAberrationPassState,
+  isChromaticAberrationPassState,
+} from "./render/chromaticAberrationPass.js";
+export type { GrainPassState, GrainMode } from "./render/grainPass.js";
+export { createGrainPassState, isGrainPassState } from "./render/grainPass.js";
+export type { VignettePassState } from "./render/vignettePass.js";
+export {
+  createVignettePassState,
+  isVignettePassState,
+} from "./render/vignettePass.js";
+export type { ToneMapCurve } from "./render/toneMap.js";
+export { parseToneMapCurve } from "./render/toneMap.js";
+export {
+  resolveRadianceStack,
+  type RadianceStackInputs,
+  type EffectiveRadianceStack,
+} from "./render/radianceStack.js";
 export type { RenderBackend, DrawPointsCall } from "./render/backend.js";
 export { MockRenderBackend } from "./render/backend.js";
 export {

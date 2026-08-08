@@ -35,8 +35,9 @@ Exit gate (CRITICAL_PATH): all **31 non-GEN** catalog ops; Radiance Stack; measu
 |---|---|
 | **M1.1** Async arrival + `TEST/SyntheticAsync` | **Landed** — pure helpers + probe op; not in net-31 |
 | **M1.2** Measured tier + point governor | **Landed** — `tier/*`, PointCloud honors governor |
-| **M1.3** Radiance Stack remainder | **Next** |
-| M1.4–M1.6 | Pending |
+| **M1.3** Radiance Stack remainder | **Landed** — Godrays/CA/Grain/Vignette + ToneMap on Render + tier bypass |
+| **M1.4** Non-GEN catalog batches | **Next** |
+| M1.5–M1.6 | Pending |
 
 ### Explicit non-started (M1 remainder / later)
 
@@ -164,7 +165,7 @@ pnpm --filter @iconostasis/m0-demo build
 3. Green suite → stop for review.  
 4. No real AI adapters until M1.1 synthetic async is proven and M2a boundary exists.
 
-**Resume at:** **M1.3** — Radiance Stack remainder (Godrays, CA, Grain, Vignette; ToneMap on Render; tier auto-bypass).
+**Resume at:** **M1.4** — remaining non-GEN catalog ops (SIG → SRC → MAT → GEO → FX/Feedback → LIT → AudioOut).
 
 ---
 

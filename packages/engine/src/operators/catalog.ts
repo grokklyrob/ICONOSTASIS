@@ -9,6 +9,10 @@ import { audioInFactory } from "./src/audioIn.js";
 import { lfoFactory } from "./sig/lfo.js";
 import { pointCloudFactory } from "./geo/pointCloud.js";
 import { bloomFactory } from "./fx/bloom.js";
+import { godraysFactory } from "./fx/godrays.js";
+import { chromaticAberrationFactory } from "./fx/chromaticAberration.js";
+import { grainFactory } from "./fx/grain.js";
+import { vignetteFactory } from "./fx/vignette.js";
 import { renderFactory } from "./out/render.js";
 import { syntheticAsyncFactory } from "./test/syntheticAsync.js";
 
@@ -23,10 +27,15 @@ export function registerM0Operators(registry: OperatorRegistry): void {
 }
 
 /**
- * M0 six + M1 probe ops (TEST/SyntheticAsync is not part of the net-31 catalog).
+ * M0 + M1 operators landed so far (TEST/SyntheticAsync is not in net-31).
+ * Radiance FX: Bloom (M0), Godrays, ChromaticAberration, Grain, Vignette.
  */
 export function registerM1Operators(registry: OperatorRegistry): void {
   registerM0Operators(registry);
+  registry.register(godraysFactory);
+  registry.register(chromaticAberrationFactory);
+  registry.register(grainFactory);
+  registry.register(vignetteFactory);
   registry.register(syntheticAsyncFactory);
 }
 
@@ -40,6 +49,13 @@ export {
 } from "./geo/pointCloud.js";
 export type { PointCloudAsyncView, CacheScope } from "./geo/pointCloud.js";
 export { bloomFactory, FX_BLOOM_TYPE } from "./fx/bloom.js";
+export { godraysFactory, FX_GODRAYS_TYPE } from "./fx/godrays.js";
+export {
+  chromaticAberrationFactory,
+  FX_CHROMATIC_ABERRATION_TYPE,
+} from "./fx/chromaticAberration.js";
+export { grainFactory, FX_GRAIN_TYPE } from "./fx/grain.js";
+export { vignetteFactory, FX_VIGNETTE_TYPE } from "./fx/vignette.js";
 export {
   renderFactory,
   OUT_RENDER_TYPE,
