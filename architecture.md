@@ -6,10 +6,42 @@ Working codename: **ICONOSTASIS** (the screen of icons through which the sanctua
 | | |
 |---|---|
 | **Doc type** | Product Requirements + Technical Architecture (SWE-agnostic, model-agnostic) |
-| **Status** | Draft v0.1 |
+| **Status** | Draft v0.2 |
 | **Owner** | Manalive Tech / the Bitmonk |
 | **Audience** | Any engineer or agentic coding system implementing the product; no prior context assumed |
 | **Constellation** | Sibling to 40days.ai; the seraph point cloud (`seraph.bin`, 288k pts) is a canonical first-party asset |
+
+### CHANGELOG
+
+| Version | Date | Notes |
+|---|---|---|
+| **v0.2** | 2026-08-07 | Advisor amendment set AMD-01…AMD-20 applied. See table below. |
+| v0.1 | 2026-08-07 | Initial draft. |
+
+**v0.2 amendments (keyed to AMD ids):**
+
+| ID | Sections | Summary |
+|---|---|---|
+| AMD-01 | §7.1, §7.2 | Async Arrival Law; cook is `void`; per-port policy; streaming text carve-out; audio queue-to-cue; GPU fade cap; empty cache; `cacheScope` |
+| AMD-02 | §10.1 | One project graph; `StationPatch`; LIT authority (`story.json`; Caption/Choice ops only) |
+| AMD-03 | §2.3, §8.3, §8.4 | Measured tier probe; scene-total point governor; cathedral ≥1M as verification target |
+| AMD-04 | §9.4 | GEN arming, spend ceiling, `minIntervalMs`, triggerMode opt-in |
+| AMD-05 | Appendix A, §7.2, §11.2 | Net catalog 35; `SRC/Input` merge; Relief/Publish/Recorder/etc. out of v1 |
+| AMD-06 | §9.2, §15.1 | Single fetch boundary; adapters never see raw secrets |
+| AMD-07 | §9.1, §9.5, §15.2 | Hybrid direct/helper routing; paired Local Helper; honest CSP reload for direct origins |
+| AMD-08 | §13.1 | `hosted-pair` / `offline-complete` profiles; no silent seraph decimation; player portability scope |
+| AMD-09 | §14.3, §18 | Kind 31333 primacy vs kind-1 compatibility surface; revised M4 demo |
+| AMD-10 | §16.4 | Flash limiter measurement (flash count + rise-rate damper) |
+| AMD-11 | §13.2 | Video v1 = realtime MediaRecorder, not deterministic offline |
+| AMD-12 | §16.1 | Signal-path cook budget vs heavy cooks |
+| AMD-13 | §8.1, §19 | WebGL2 acceptance backend; per-backend golden plates; fork points named |
+| AMD-14 | §7.2, Appendix B | Modulation as first-class edges |
+| AMD-15 | §6 | GEN fetch on main thread (v1) |
+| AMD-16 | §9.4 | Cache artifact to OPFS on every successful GEN |
+| AMD-17 | §12.4 | Separate publish toggle for `promptText` (default off) |
+| AMD-18 | §7.3 | Shrines serialize as nested graph macros |
+| AMD-19 | §14.1 | Publish is editor/command flow, not live OUT op |
+| AMD-20 | §18 | M1 full non-GEN catalog + synthetic async; M2a/M2b split; M3/M4 demo lines |
 
 ---
 
@@ -92,7 +124,7 @@ From TouchDesigner we take the operator-family mental model and the cooking (laz
 
 ### 2.3 Three.js — the render substrate
 
-All 3D is Three.js (or an equivalent WebGL2/WebGPU scene-graph library — the spec is library-agnostic, but Three.js is the reference implementation given prior art: the 40days.ai seraph viewer with additive blending + bloom). The renderer must support point-cloud rendering at ≥1M points with additive blending and post-processing bloom on mid-tier hardware.
+All 3D is Three.js (or an equivalent WebGL2/WebGPU scene-graph library — the spec is library-agnostic, but Three.js is the reference implementation given prior art: the 40days.ai seraph viewer with additive blending + bloom). On `cathedral`-class devices (see §8.4), the renderer must be capable of point-cloud rendering at high counts (up to the cathedral budget) with additive blending and post-processing bloom. ≥1M points is a **cathedral verification target for templates that claim it**, not a requirement for `chapel`/`wayside` playback.
 
 ### 2.4 Buzz (Block / Jack Dorsey) — the publishing target, correctly understood
 
@@ -221,7 +253,7 @@ Client-only by default. Every box below runs in the browser except the two dashe
                                                   └─────────────────────────────┘
 ```
 
-**Threading model:** main thread owns the render loop and UI; a worker pool (Web Workers, message-passing via structured clone or a comlink-style RPC) owns: graph serialization, zip packing, asset decoding (draco/ktx2/point-cloud parsing), FFT beyond AnalyserNode needs, and Nostr event signing prep. AI calls are plain `fetch` with streaming readers; they occur from the main thread or a worker but never block the frame.
+**Threading model:** main thread owns the render loop and UI; a worker pool (Web Workers, message-passing via structured clone or a comlink-style RPC) owns: graph serialization, zip packing, asset decoding (draco/ktx2/point-cloud parsing), FFT beyond AnalyserNode needs, and non-NIP-07 signing prep. AI calls are plain `fetch` with streaming readers on the **main thread** (v1), never awaited inside graph cook; they must not block the frame. NIP-07 signing remains main-thread (extension API).
 
 **State model:** one canonical, serializable **Project State** (graph + story + assets index + settings), managed by a small reactive store. UI is a projection of state; the runtime consumes state; undo/redo is command-pattern over state diffs. Keys are *not* part of Project State (see §15).
 
@@ -234,7 +266,19 @@ Client-only by default. Every box below runs in the browser except the two dashe
 - The graph is a **directed acyclic graph** of typed operators. Cycles are permitted only through an explicit `Feedback` operator (one-frame delay), mirroring TD's feedback TOP semantics.
 - **Port types:** `signal` (number | vec2 | vec3 | color, per-frame), `field` (texture/render-target handle), `geometry` (BufferGeometry-equivalent handle), `material`, `text` (string, event-updated), `media` (image/audio/video handle), `event` (discrete triggers), `story` (LIT-family control flow).
 - **Evaluation:** pull-based lazy "cooking." The `OUT: Render` operator pulls each frame; only dirty subtrees recompute. `signal` ports cook every frame cheaply; heavy ports (`field`, `geometry`) cook only when upstream params change or an animation flag forces per-frame cooking.
-- **Async operators** (all of `GEN`, plus asset loaders) never block: they hold `lastGoodValue`, expose a `status` sub-signal (`idle | pending | fresh | error`), and the runtime crossfades from `lastGoodValue` to the new value on arrival (default 1200ms crossfade, per-op configurable). This is the single most important UX invariant in the engine.
+- **Async operators** (all of `GEN`, plus asset loaders) never block the frame: the graph evaluator never awaits cook work. Cook itself is synchronous (`cook` returns `void`); async I/O is scheduled from cook and reports back through `lastGoodValue` / status. Each async output holds `lastGoodValue`, exposes `status` (`idle | pending | fresh | error`) and `presentation` (`current | fading | queued`), and obeys the **Async Arrival Law**: a newly arrived value must not replace *presented* output on the `fresh` transition except through the port-type arrival policy below. Default temporal window: 1200ms where a duration applies; per-op configurable.
+  - **`cacheScope` (normative, every async op):** param `cacheScope: "station" | "global"`, **default `"station"`**. Presentation and disk cache keys are `(opId, stationId)` when `station`, or `(opId)` when `global`. Scope is declared on the op — not inferred by the runtime. Station entry rebinds presentation using that rule so GEN output does not leak across stations unless the author explicitly chose `global`.
+  - **Arrival policy (normative):**
+    - `signal`, `field`: **must crossfade** (lerp / dual-resource blend). This is the concrete form of pillar §4.3 for continuous visual/signal AI results.
+    - `geometry`, `material`: dual-draw or hold-then-atomic-swap within the window; no unceremonious pop.
+    - `text`:
+      - **Streaming mode** (e.g. `GEN/Oracle` → Caption while tokens arrive): **append-only growth of the presented string IS the arrival policy.** Incremental append is not a pop and is the intentional aesthetic of §9.4 (token-by-token Caption rendering).
+      - **Replacement mode** (regeneration, non-stream commit, or any overwrite of already-displayed text with a new complete value): **hold last displayed text through the window, then atomic swap** — never snap mid-frame over a prior result.
+    - `media` (still image): treat as `field` once on the GPU.
+    - `media` (audio): **never replace a playing buffer mid-playback**; queue as `next` until a cue boundary (`audio.ended`, station exit, bound cue, or consumer of `event:complete`); if idle, short gain fade-in (≤80ms) to avoid clicks. Status may be `fresh` while still queued.
+    - `event`: edge-triggered; no crossfade.
+  - **GPU crossfade cap:** wayside 1, chapel 2, cathedral 2 concurrent field/geometry fades. Overflow: FIFO global queue; per-op newer arrival replaces older queued arrival for that op; **snap-to-clear-queue is forbidden**.
+  - **Empty cache:** if no `lastGoodValue` exists, present the empty-cache placeholder for that port type (field: crypt-void + gold frame; signal: default/0; geometry: no draw; text: empty; audio: silence). Shipped templates must include pre-cached artifacts so demo/player paths are never empty on GEN outputs.
 
 ### 7.2 Operator contract (language-agnostic)
 
@@ -248,22 +292,22 @@ interface OperatorDef {
   outputs: PortSpec[];
   params: ParamSpec[];          // typed, with ranges, defaults, and UI hints
   capabilities?: AICapability[];// only for GEN family — see §9.2
-  cook(ctx: CookContext): void | Promise<void>;
+  cook(ctx: CookContext): void; // must not return a Promise; async work is scheduled, never awaited by the evaluator
   dispose(): void;
   serialize(): JsonValue;       // params only; no runtime handles, never secrets
 }
 ```
 
 - `ParamSpec` includes: `id`, `type` (`float|int|bool|enum|color|string|text|curve|seed`), `default`, `min/max/step`, `unit`, `exposable: boolean` (whether it can surface in Perform Mode / templates), and `modulatable: boolean` (whether a `signal` wire can drive it).
-- **Any modulatable param can be driven by any signal wire.** This is the TouchDesigner magic and is non-negotiable: wiring an audio band into a bloom threshold or a prompt temperature must require zero code.
-- v1 ships a fixed catalog (~35 operators, Appendix A). A plugin/custom-operator API is explicitly **out of scope for v1** (a `MAT/CustomShader` op covers the escape-hatch need).
+- **Any modulatable param can be driven by any signal.** Modulation is a **first-class edge** in the graph schema (from a `signal` output to a param inlet), type-checked in the editor. Serialized form may use a `modulations` array as sugar, but it is not a second parallel graph model. This is the TouchDesigner magic and is non-negotiable: wiring an audio band into a bloom threshold or a prompt temperature must require zero code.
+- v1 ships a fixed catalog (35 operators net, Appendix A). A plugin/custom-operator API is explicitly **out of scope for v1** (a `MAT/CustomShader` op covers the escape-hatch need).
 
 ### 7.3 Graph editor UX requirements
 
 - Pan/zoom canvas; drag-to-wire with type-checked ports (incompatible ports visually reject).
 - Operator palette with search; right-click quick-add; keyboard-first (`Tab` to add, like Blender/TD idioms).
 - Inspector panel for the selected operator's params; params show a small "modulated" badge when wire-driven.
-- Sub-graph collapse ("Shrine"): select N operators → collapse to one node with promoted exposed params. Shrines are the unit of template remixing.
+- Sub-graph collapse ("Shrine"): select N operators → collapse to one node with promoted exposed params. Shrines serialize as **nested graph documents** with promoted params (macros), inlined on cook; they are the unit of template remixing. Collapse-as-view-only without nested serialization is non-conformant.
 - Live thumbnails on `field`-producing operators (throttled to ≤ 5 Hz refresh).
 - Graph and viewport are visible simultaneously (split layout); Perform Mode hides the graph.
 
@@ -273,7 +317,7 @@ interface OperatorDef {
 
 ### 8.1 Renderer
 
-- **Reference:** Three.js `WebGPURenderer` with automatic WebGL2 fallback; shaders authored in TSL (Three Shading Language) where possible so one shader graph compiles to both backends. If the implementing team chooses a different library, it must match this capability set.
+- **Reference:** Three.js `WebGPURenderer` with automatic WebGL2 fallback. Prefer TSL (Three Shading Language) shared graphs, but **WebGL2 is the acceptance backend** (floor). Golden-frame plates are **per backend** (`webgl2` required in CI; `webgpu` optional where available). Techniques known to fork or need dual paths — **godrays, feedback, custom SDF/GLSL strings, point size attenuation, HDR intermediate formats** — must document backend differences in operator notes; visual parity is best-effort, not assumed. If the implementing team chooses a different library, it must match this capability set.
 - Scene composition is owned by the graph: `GEO` ops emit geometry handles, `MAT` ops emit materials, a `GEO/Assemble` op binds them into scene nodes; the `OUT/Render` op owns camera + render targets.
 - **Required capabilities:** instanced rendering; point sprites with per-point color/size; additive + normal blending; HDR render targets; multi-pass post chain; render-to-texture for the `FX/Feedback` op; logarithmic depth optional.
 
@@ -293,20 +337,20 @@ Fixed-order, individually-bypassable passes, each an `FX` operator with modulata
 - **Point-cloud icons:** load `.bin` (positions [+ optional colors] as packed Float32/Uint8 — the seraph format), `.ply`, `.glb` point primitives. Per-point noise displacement driven by signals; additive blending; size attenuation.
 - **SDF Field op:** raymarched signed-distance scene inside a bounding volume (halos, mandorlas, gothic arch booleans) with a curated preset SDF library; custom SDF code string allowed (sandboxed to shader compile).
 - **Feedback buffer:** previous-frame texture with transform/decay — the phosphor-trail, "glory that lingers" effect.
-- **Particle system:** GPU-instanced, ≤ 500k particles, emitter shapes including "from geometry surface" (so a saint statue can dissolve into gold dust and reassemble — the *transfiguration* preset).
+- **Particle system:** GPU-instanced particles; emission requests are granted only up to the **remaining scene point budget** (§8.4). There is no separate uncapped particle ceiling that can exceed the tier budget. Emitter shapes include "from geometry surface" (so a saint statue can dissolve into gold dust and reassemble — the *transfiguration* preset).
 - **Text as geometry:** `GEO/Glyph` extrudes or point-scatters text (for illuminated capitals and floating scripture), font-file driven.
 
 ### 8.4 Device tiering
 
-At startup, a capability probe assigns `tier ∈ {cathedral, chapel, wayside}`:
+At startup (and on explicit re-probe), a **measured capability probe** assigns `tier ∈ {cathedral, chapel, wayside}` from achieved frame time and feature support while rendering a standard probe scene — not from marketing GPU labels. WebGPU vs WebGL2 is an input to the probe, not a sufficient classifier. “Discrete GPU” heuristics are non-normative hints only.
 
-| Tier | Trigger | Budgets |
-|---|---|---|
-| `cathedral` | WebGPU, discrete-GPU heuristics | ≤ 2M points, full Radiance Stack, 60fps target |
-| `chapel` | WebGL2, mid hardware | ≤ 600k points, bloom+grain+vignette only, 60fps target |
-| `wayside` | mobile / weak GPU | ≤ 150k points, bloom only at half-res, 30fps floor |
+| Tier | Typical signals (non-normative) | Scene-total point budget | Post | Frame target |
+|---|---|---|---|---|
+| `cathedral` | Strong probe score; often WebGPU | ≤ 2_000_000 | full Radiance Stack | 60fps target |
+| `chapel` | Mid probe score; WebGL2 common | ≤ 600_000 | bloom+grain+vignette | 60fps target |
+| `wayside` | Weak/mobile probe score | ≤ 150_000 | bloom half-res only | 30fps floor |
 
-Every experience must declare per-tier fallbacks automatically (point-count decimation is built into the loader; post passes auto-bypass by tier). Authors may preview any tier from the editor.
+Budgets are **scene-total** across all point and particle emitters. A **runtime point governor** tracks allocated points; emitters receive `min(requested, remaining)`. Loaders decimate assets to fit; post passes auto-bypass by tier. Authors may preview any tier. Templates that claim “cathedral 1M+” must verify on a cathedral probe profile in CI golden plates.
 
 ---
 
@@ -316,7 +360,7 @@ Every experience must declare per-tier fallbacks automatically (point-count deci
 
 1. **Capability contracts, not vendors.** GEN operators declare what they need (`text.stream`, `image.generate`, `speech.synthesize`); the user maps capabilities to configured providers. Swapping Anthropic→local Ollama→OpenRouter changes zero graph wiring.
 2. **Keys are radioactive.** They live in the Key Vault (§15.1), are injected into requests at call time, and are structurally unreachable from serialization, export, and publish code paths.
-3. **Direct-to-provider.** Calls go browser → provider TLS endpoint. No first-party proxy, ever, by default. (A user-run local CORS helper exists for providers that block browser origins — §9.5.)
+3. **User-sovereign egress (no first-party proxy).** Calls never transit Manalive-hosted infrastructure. Per configured provider, routing is `direct` (browser → provider TLS) or `helper` (browser → user-run Local Helper → provider). Default is `direct` only when the adapter declares browser compatibility and a probe succeeds; otherwise default is `helper`. No hosted middleman exists in any configuration.
 4. **Everything is provenance-stamped.** Every generated artifact records provider-class, model id, prompt, params, seed (if any), and timestamp into `provenance.json` (§12.4). No key material, ever.
 
 ### 9.2 Capability contracts
@@ -335,6 +379,9 @@ interface ProviderAdapter {
   capabilities: AICapability[];
   configSchema: JsonSchema;          // baseUrl, model, headers, etc. — never the key itself
   invoke(cap: AICapability, req: CapRequest, key: SecretRef, signal: AbortSignal): AsyncCapResult;
+  // Adapters must not call global `fetch` to providers directly. They return request
+  // descriptors; the gen runtime's **single fetch boundary** resolves `SecretRef` and
+  // performs TLS. Unit tests enforce no provider I/O outside the boundary.
   estimate?(cap: AICapability, req: CapRequest): CostEstimate;  // best-effort
 }
 ```
@@ -352,19 +399,32 @@ A **Provider Registry** UI lists configured providers, their capabilities, a "te
 
 ### 9.4 GEN operator family (behavioral spec)
 
-All GEN ops obey the async invariant (§7.1): `lastGoodValue` + `status` + crossfade. All have `seed` and `temperature`-class params where the capability supports them, `modulatable` where sane (yes: temperature, guidance, denoise; no: model id mid-performance).
+All GEN ops obey the Async Arrival Law (§7.1): `lastGoodValue` + `status` + port-type arrival policy. All have `seed` and `temperature`-class params where the capability supports them, `modulatable` where sane (yes: temperature, guidance, denoise; no: model id mid-performance). Every async GEN op has `cacheScope` (default `station`).
 
 - **`GEN/PromptLoom`** — template op. A text template with `{{slots}}` filled from wired `text`/`signal` inputs (numbers formatted, enums mapped). Output: `text`. This is the load-bearing op: it turns live signals into prompts ("ambient light is {{lux}}, write a one-line vesper antiphon").
-- **`GEN/Oracle`** — text generation (`text.stream` preferred). Params: system prompt, max tokens, temperature. Outputs: `text` (streaming — downstream Caption ops render token-by-token, an intentional aesthetic), `event: complete`.
+- **`GEN/Oracle`** — text generation (`text.stream` preferred). Params: system prompt, max tokens, temperature. Outputs: `text` (streaming — downstream Caption ops render token-by-token, an intentional aesthetic; see §7.1 streaming text policy), `event: complete`.
 - **`GEN/Icon`** — image generation. Inputs: prompt `text`, optional init `media`. Output: `field` (texture). Includes built-in style-suffix presets aligned to the aesthetic canon ("gold-ground icon, neon rim light, mycelial gothic…"), user-editable.
-- **`GEN/Antiphon`** — TTS. Input: `text`; output: `media(audio)` routed to the Audio Engine; `event: complete` for cue sequencing (e.g., advance Station when the antiphon finishes).
-- **`GEN/Relief`** — image → displacement/normal map (client-side heightfield inference from luminance at v1; true depth-model support via `custom-http` later). Turns generated icons into low-relief geometry — the "carved retablo" effect.
+- **`GEN/Antiphon`** — TTS. Input: `text`; output: `media(audio)` routed to the Audio Engine; `event: complete` for cue sequencing (e.g., advance Station when the antiphon finishes). Audio arrival obeys §7.1 (no mid-playback buffer replace).
 
-**Determinism policy:** where providers accept seeds, seeds are recorded and replayed; where they don't, `provenance.json` marks the artifact `nondeterministic: true` and the *generated asset itself* is cached into the bundle so playback never depends on regeneration. **Published/exported experiences never call AI APIs at view time** (viewers have no keys; see §13). Live generation is an *authoring and performing* feature, not a playback dependency.
+**Arming & cost control (normative):**
+1. In **Perform Mode**, all GEN ops are **disarmed** by default. Invokes require an explicit user **Arm** (global and/or per-op). Template Mode / Graph Mode may default armed for authoring convenience, with clear armed state UI.
+2. A **per-session spend ceiling** (currency or token/request units; user-configurable; conservative default) hard-stops further invokes when reached (`status=error`, non-blocking). Raising the ceiling is an explicit user action.
+3. Every GEN op has `minIntervalMs` (not modulatable) between successful invoke starts.
+4. Signal- or threshold-triggered auto-generation is **opt-in per op** (`triggerMode: manual | event | signalThreshold`); default `manual` or `event` only where the op’s primary UX is event-driven (e.g. Antiphon on station enter via cue — still subject to arming in Perform Mode).
+
+**Determinism policy:** where providers accept seeds, seeds are recorded and replayed; where they don't, `provenance.json` marks the artifact `nondeterministic: true` and the *generated asset itself* is cached into the bundle so playback never depends on regeneration. On every successful GEN completion, the artifact is written to the OPFS asset cache by content hash immediately; save/export packs from cache. Memory-only success is non-conformant. **Published/exported experiences never call AI APIs at view time** (viewers have no keys; see §13). Live generation is an *authoring and performing* feature, not a playback dependency.
 
 ### 9.5 CORS reality & the Local Helper
 
-Some providers reject browser-origin calls. Mitigations, in order: (1) prefer providers with browser support or permissive CORS; (2) local inference servers (Ollama et al.) are same-machine and configurable; (3) ship an **optional, single-command local helper** (`npx iconostasis-helper` or a single static binary) — a localhost reverse proxy that adds the user's key server-side-on-their-own-machine and forwards to the provider. It is open source, ~200 lines, auditable, and completely optional. The app detects it at `http://localhost:7777` and offers it as a routing option per provider. No hosted middleman exists in any configuration.
+Some providers reject browser-origin calls. Mitigations, in order: (1) adapters that support browser CORS/`browserOk`; (2) local inference with configured CORS; (3) the **Local Helper** — open-source, auditable, user-run (`npx` or static binary).
+
+The helper:
+- Listens on localhost only;
+- Requires **pairing**: a one-time token generated by the app; unpaired origins are denied (Private Network Access preflight alone is insufficient);
+- By default **does not persist** provider API keys; it forwards requests with secrets applied from the app’s Vault headers/fields for that session, acting as an origin-locked CORS egress;
+- Optional advanced mode: helper-held keys (explicit, warned).
+
+The app probes helper presence and pairing state; per-provider routing `direct | helper` is user-visible. No hosted middleman exists in any configuration.
 
 ---
 
@@ -379,7 +439,7 @@ Experience
  ├─ meta (title, author, description, cover, palette-theme)
  ├─ stations: Station[]           // ordered; edges may branch
  │    ├─ id, title, subtitle
- │    ├─ patch: GraphRef          // subgraph or full-graph preset state
+ │    ├─ patch: StationPatch      // parameter snapshot + enable mask over the single project graph; not a separate graph document
  │    ├─ camera: CameraCue        // position/target/fov + processional path
  │    ├─ captions: Caption[]      // timed or event-bound illuminated text
  │    ├─ cues: Cue[]              // see below
@@ -388,10 +448,11 @@ Experience
  └─ startStation, endStations[]
 ```
 
-- **Cue conditions** (composable with and/or): `time.elapsed(s)`, `signal.threshold(port, op, value)`, `input.click(target?)`, `input.key(k)`, `gen.complete(opId)`, `audio.ended(cueId)`, `choice.selected(choiceId, option)`.
+- **Cue conditions** (composable with and/or): `time.elapsed(s)`, `signal.threshold(port, op, value)`, `input.click(target?)`, `input.key(k)`, `gen.complete(opId)`, `audio.ended(cueId)`, `choice.selected(choiceId, option)`. Cue conditions `input.click` / `input.key` are events from `SRC/Input` (§11.2).
 - **`LIT/Choice`** renders 2–4 interactive options (styled as illuminated manuscript marginalia or triptych panels) and emits the selection event → branching narratives. This is how "interactively construct a visual story" reaches the *viewer*, not just the author.
 - **Transitions:** `crossfade`, `luma-wipe` (with shipped luma masks: rose window, gothic arch, mandorla), `bloom-through-white` (the "transfiguration cut": bloom strength ramps until the frame is light, then resolves into the next station), `hard-cut`.
-- **Station patch semantics:** a Station stores a parameter-state snapshot over the project graph (+ optional per-station enabled/disabled operator set), not a wholly separate graph — keeping bundles small and authoring sane. Entering a station tweens modulatable params from current values to the snapshot over the transition duration.
+- **Station patch semantics:** There is exactly one project operator graph per Experience. A Station stores a parameter-state snapshot over that graph (+ optional per-station enabled/disabled operator set), never a wholly separate graph. `StationPatch` is an id into snapshot data in `story.json`. Entering a station tweens modulatable params from current values to the snapshot over the transition duration and rebinds async presentation keys to that `stationId` so GEN `lastGoodValue` does not leak across stations (subject to each op’s `cacheScope`).
+- **LIT authority:** `story.json` is source of truth for stations, cues, transitions/exits. `LIT/Caption` and `LIT/Choice` are graph operators that render and emit events; they reference story ids. `Station`, `Cue`, and `Transition` are not graph operators.
 
 ### 10.2 Timeline & authoring
 
@@ -420,8 +481,7 @@ Shipped v1 templates (each a complete worked example and test fixture): **Via Lu
 
 ### 11.2 Interaction sources
 
-- **`SRC/Pointer`** — normalized x/y, velocity, down/up events; raycast hit test against tagged scene objects (`event: hit(objectTag)`).
-- **`SRC/Keyboard`** — mappable key events.
+- **`SRC/Input`** — unified pointer + keyboard source. Outputs: normalized pointer x/y, velocity, down/up; raycast `event: hit(objectTag)` against tagged scene objects; mappable key down/up/edge events suitable for Perform bindings and story cues. Cue conditions `input.click(target?)` and `input.key(k)` (§10.1) are defined as events from this operator (or the platform input path it wraps). There is no separate `SRC/Keyboard` or `SRC/Pointer` op.
 - **`SRC/MIDI`** — WebMIDI CC/note inputs as signals/events (Chrome-class browsers; feature-detected, optional).
 - **`SRC/OSC`** *(v1.1, optional)* — OSC over WebSocket for TouchDesigner/typical VJ rig interop; requires the Local Helper as the UDP↔WS bridge.
 - **`SRC/Camera`** *(v1.1, optional)* — webcam luminance/motion-energy as signals (privacy: never leaves device, indicator always shown).
@@ -463,7 +523,7 @@ Every serialization/export/publish path runs a **secret-scan gate**: reject the 
 
 ### 12.4 `provenance.json`
 
-Append-only records: `{artifactHash, capability, providerClass, modelId, promptHash, promptText?, params, seed?, nondeterministic?, createdAt}`. `promptText` inclusion is a user toggle (default on for transparency; off for authors who consider prompts private). Published experiences carry provenance — AI-assisted art in this register should say so plainly.
+Append-only records: `{artifactHash, capability, providerClass, modelId, promptHash, promptText?, params, seed?, nondeterministic?, createdAt}`. `promptText` may be stored in authoring provenance (user toggle; default on). **Publish** uses a separate toggle (default **off** = hash only in the published bundle/events). Authors must opt in to publish raw prompts. Published experiences carry provenance — AI-assisted art in this register should say so plainly.
 
 ---
 
@@ -471,14 +531,18 @@ Append-only records: `{artifactHash, capability, providerClass, modelId, promptH
 
 ### 13.1 Standalone Player (`player.html`)
 
-- One self-contained HTML file: runtime (player subset — no editor code), inlined bundle (base64 or embedded zip), zero external network dependencies. Target ≤ 6 MB before assets; assets inline up to a configurable cap (default 25 MB total), beyond which the exporter emits `player.html + experience.icx` as a pair that must travel together.
+- Two export profiles:
+  1. **`hosted-pair` (default):** `player.html` + `experience.icx` (or equivalent), designed to travel together or with `player` pointing at an author-hosted URL. After load of the pair, playback makes **no AI calls** and no required third-party calls; optional progressive asset fetch only if the author chose a hosted asset layout (declared in manifest).
+  2. **`offline-complete`:** single artifact with runtime + bundle embedded (prefer binary append / inflate over base64). Hard size cap for this profile (recommended: fail export above **3 MB total** unless user acknowledges “large single-file”).
+- **Flagship assets:** assets of `seraph.bin` class exceed the offline-complete default cap **by design**. The intended path is **`hosted-pair`**, or offline-complete only with the explicit large-single-file acknowledgment. **Decimating flagship first-party assets solely to fit single-file is not an acceptable export strategy.**
+- Target player **runtime** ≤ 900 KB gz (§16). Asset weight is profile-specific. Portability forever (§4.6) applies to **`.icx` + schema migrations**; embedded `player.html` freezes a runtime and is not required to self-migrate across major versions (re-export is the upgrade path).
 - The player runs Stations, cues, choices, audio, and all rendering — but **never calls AI providers**: every GEN op plays back its cached artifact. (A "live oracle" viewer mode, where a viewer supplies their own key, is a v2 open question — §20.)
 - Player chrome: title card, *click to begin* rite, progress indicia (station beads, styled as a rosary rail), mute, fullscreen, and an "About / Provenance" panel (author identity, provenance summary, license).
 - Hosting is trivially static: works from `file://`, any static host, a Vercel deploy (e.g., under 40days.ai), or attached to a Nostr note as a URL.
 
 ### 13.2 Other exports
 
-- **Video:** deterministic offline render (recorded inputs + seeds) via `MediaRecorder` at v1 (realtime capture), WebCodecs frame-accurate encode at v1.1 (non-realtime, higher quality). Vertical (9:16) and square crops with safe-area caption reflow, for social.
+- **Video:** v1 = **realtime capture** via `MediaRecorder` (best-effort; may drop frames under load; not frame-deterministic). v1.1 = **non-realtime frame stepper** + WebCodecs (or equivalent) for frame-accurate encode given recorded inputs + seeds. Do not describe v1 capture as deterministic offline render. Vertical (9:16) and square crops with safe-area caption reflow, for social.
 - **Still:** current-frame PNG at up to 4× supersample ("plate export" for prints/covers).
 - **GLB:** static geometry snapshot of the current scene (point clouds included) for interop with Blender pipelines.
 
@@ -495,6 +559,8 @@ Buzz is a Nostr-native workspace (chat + git for humans and agents; open source;
 - **In ours:** the same events, on our own relay, rendered by our own gallery (§14.4).
 
 One publish action, three destinations, one identity.
+
+Publishing is an explicit editor/command flow (and M4 UI), not a per-frame `OUT` operator side effect.
 
 ### 14.2 Identity & signing
 
@@ -527,6 +593,7 @@ One publish action, three destinations, one identity.
 - **Announcement note:** a plain `kind: 1` note (max compatibility) with the player URL + thumbnail, `q`-tagging the 31333 event — this is what ordinary clients and Buzz channels actually render today. Optionally a **NIP-23** long-form article for authors who write commentary/meditations around the piece.
 - **Zaps (NIP-57)** work automatically for authors with Lightning addresses on their profile — patronage without us building payments.
 - Graceful degradation is inherent: clients that don't know kind 31333 still see the kind-1 note with a working link. Nothing depends on ecosystem adoption of our kind.
+- **Primacy:** For Buzz and public clients, the **kind 1 announcement + working player URL** is the compatibility surface. Kind `31333` is **first-class structured manifest** for addressable updates and for Cloister Gallery indexing; publish always emits both. Product success outside Cloister must not depend on foreign clients rendering kind 31333.
 
 ### 14.4 "Build something ourselves": the Cloister Relay
 
@@ -546,11 +613,11 @@ The sovereign fallback is deliberately boring: **run a standard open-source Nost
 
 - **Default: session-only.** Keys live in JS memory (closure-held, not on `window`, not in `localStorage`), gone on tab close.
 - **Opt-in: encrypted vault.** WebCrypto AES-256-GCM; key derived from a user passphrase via PBKDF2 (≥ 600k iterations; Argon2id via WASM if available); ciphertext in IndexedDB; auto-lock after configurable idle; passphrase never stored. Clear UI copy about the threat model (protects at-rest, not against a compromised browser/extension).
-- `SecretRef` indirection: adapters receive an opaque handle; the raw string is interpolated into the outbound request only at the fetch boundary. Keys are excluded from state snapshots, undo history, error reports, and logs by construction, and §12.3's taint gate backstops all writes.
+- `SecretRef` indirection: adapters receive an opaque handle and never receive the raw secret string. The raw secret is applied only inside the gen runtime fetch boundary when constructing the outbound provider (or helper) request. Keys remain excluded from state snapshots, undo history, error reports, and logs by construction; §12.3 taint-gates all writes.
 
 ### 15.2 App integrity
 
-- Strict CSP: `default-src 'self'`; `connect-src` allows only user-configured provider origins + configured relays/media hosts (dynamically extended with explicit user consent per origin — a visible "this app talks to:" panel); no third-party scripts, no analytics beacons at v1.
+- Strict CSP: `default-src 'self'`. `connect-src` includes `'self'`, the Local Helper origin when used, configured Nostr/media hosts, and **only** provider origins for which the user has consented to **direct** routing. Consent to a new direct origin applies on **reload** with an updated policy (or equivalent session rebuild); silent runtime CSP mutation is not relied upon. Providers on `helper` routing do not add vendor hosts to `connect-src`. Visible “this app talks to:” panel lists all peers. No third-party scripts; no analytics beacons at v1.
 - All custom-shader compilation is inherently sandboxed to the GPU process; custom SDF/GLSL strings never reach `eval`.
 - Published/exported artifacts are static content; the player contains no key input and makes no AI calls (§13.1), eliminating the largest downstream risk class.
 - Telemetry: none. Crash diagnostics are local-only with an explicit "copy report" action.
@@ -564,10 +631,10 @@ The sovereign fallback is deliberately boring: **run a standard open-source Nost
 
 ## 16. Non-Functional Requirements
 
-1. **Performance:** frame budget per §8.4 tiers; graph cook overhead ≤ 2ms/frame at 60 ops; time-to-first-render on a template ≤ 3s on `chapel` tier; editor interactions ≤ 100ms perceived latency.
+1. **Performance:** frame budget per §8.4 tiers; **signal-path** cook overhead ≤ 2ms/frame at ≤ 60 ops when no heavy ports are dirty; heavy cooks (`geometry`, `field` reallocate, shader recompile) are amortized / flagged and excluded from the 2ms signal budget (separate CI budgets per heavy op class); time-to-first-render on a template ≤ 3s on `chapel` tier; editor interactions ≤ 100ms perceived latency.
 2. **Offline:** full authoring + playback offline (PWA, service-worker cached) with GEN ops in `error/last-good` state; local-model users are fully offline end-to-end.
 3. **Compatibility:** evergreen Chromium/Firefox/Safari, last 2 versions; WebGPU used when present, never required; iOS Safari must reach `wayside` tier playback for published players.
-4. **Photosensitivity & accessibility (doctrinal):** a flash limiter clamps whole-frame luminance oscillation to < 3 flashes/sec (WCAG 2.3.1) at the ToneMap stage — always on in the player, override only in the editor with a warning; `prefers-reduced-motion` honored (processional camera slows, particle counts drop); all captions available as an accessible text track; player chrome fully keyboard operable; UI contrast meets WCAG AA against the dark theme.
+4. **Photosensitivity & accessibility (doctrinal):** a flash limiter at the ToneMap stage (always on in the player; editor override with warning) enforces WCAG 2.3.1: count whole-frame mean-luminance **flashes** (threshold-crossing peaks) over a rolling 1s window and suppress or damp contributions that would exceed **3 flashes/sec**; additionally apply a max rise-rate damper on frame-to-frame mean luminance to reduce pathological strobing between counted peaks; `prefers-reduced-motion` honored (processional camera slows, particle counts drop); all captions available as an accessible text track; player chrome fully keyboard operable; UI contrast meets WCAG AA against the dark theme.
 5. **Internationalization:** UI strings externalized; captions are user content (any script); fonts subset per template.
 6. **Bundle sizes:** app core ≤ 1.5 MB gz (excluding optional wasm codecs, lazy-loaded); player runtime ≤ 900 KB gz.
 
@@ -600,18 +667,21 @@ Monorepo layout: `packages/engine` (graph+render+audio, UI-free, headless-testab
 Each milestone is shippable and demoable. Names are liturgical; scopes are contractual.
 
 - **M0 — Seed (1–2 wks):** render loop + 6 operators (`SRC/Time`, `SRC/AudioIn`, `SIG/LFO`, `GEO/PointCloud`, `FX/Bloom`, `OUT/Render`); seraph.bin loads and breathes with music; graph JSON round-trips. *Demo: the audio-reactive seraph, patched not coded.*
-- **M1 — Instrument (3–4 wks):** full graph editor UX (§7.3), ~25 operators, Radiance Stack, device tiering, OPFS autosave, `.icx` save/load, Perform Mode v0. *Demo: compose and perform a one-station piece live.*
-- **M2 — Oracle (3 wks):** Key Vault, Provider Registry, all four adapters, GEN family (`PromptLoom`, `Oracle`, `Icon`, `Antiphon`), provenance, taint gate, spend meter, Local Helper. *Demo: signals→prompt→image→texture and generated voice, live, on the user's own key — including a fully-local Ollama run.*
-- **M3 — Liturgy (3–4 wks):** Story Engine, Procession View, transitions, `LIT/Choice` branching, captions, the four shipped templates, Template Mode, standalone `player.html` export, video/still export v1. *Demo: Via Lucis end-to-end, exported, opened from `file://` on a phone.*
-- **M4 — Procession (2–3 wks):** Nostr publishing (NIP-07/46 signing, Blossom/NIP-96 upload, kind 31333 + kind 1 flow), publish-preview, Cloister Relay deployment (relay + gallery), verified rendering of the announcement note inside a Buzz community and two public Nostr clients. *Demo: publish once; open it in Buzz, in a public client, and in our gallery.*
-- **M5 — Cathedral (ongoing/stretch):** MIDI mapping UI polish, OSC bridge, WebCodecs offline render, `GEN/Relief` depth models, AT-proto adapter, live-oracle viewer mode exploration, collaborative editing exploration.
+- **M1 — Instrument (3–4 wks):** full graph editor UX (§7.3); **every non-GEN operator in the net catalog** (SRC 5, SIG 6, GEO 6, MAT 4, FX 6, LIT 2, OUT 2 — thirty-one ops); Radiance Stack; measured device tiering + point governor; OPFS autosave; `.icx` save/load; Perform Mode v0; and a **synthetic async operator** that proves `lastGoodValue`, status, arrival policy (including text streaming vs replacement, audio queue-to-cue, GPU fade cap/queue), `cacheScope`, and failure paths with fake latency — **before any real AI adapter**. *Demo: compose and perform a one-station piece live; show synthetic async policies under probe.*
+- **M2 — Oracle (split, ~3–4 wks total):**
+  - **M2a — Boundary:** Key Vault, SecretRef fetch boundary, taint gate, spend ceiling plumbing, Provider Registry shell, arming UI hooks, first live adapter path via `openai-compat` (including local Ollama).
+  - **M2b — Breadth:** remaining shipped adapters, Local Helper with pairing, full GEN family (`PromptLoom`, `Oracle`, `Icon`, `Antiphon`), provenance, spend meter UX.
+  *Demo: signals→prompt→image→texture and generated voice, live, on the user’s own key — including a fully-local Ollama run; demonstrate armed/disarmed Perform behavior and hard spend stop.*
+- **M3 — Liturgy (3–4 wks):** Story Engine (`story.json` authority), Procession View, transitions, `LIT/Choice` branching, captions, four shipped templates **with pre-cached GEN artifacts**, Template Mode, standalone player export (`hosted-pair` default; `offline-complete` within cap, no silent flagship decimation), video/still export v1 as realtime capture. *Demo: Via Lucis end-to-end, exported, opened from `file://` on a phone (`wayside`).*
+- **M4 — Procession (2–3 wks):** Nostr publishing (NIP-07/46, Blossom/NIP-96, kind 31333 + kind 1), publish-preview, Cloister Relay deployment, verification per revised demo line. *Demo: publish once; open the kind-1 announcement in a Buzz community and in two public Nostr clients (working player link); open the same experience from Cloister Gallery via kind 31333 on our relay.*
+- **M5 — Cathedral (ongoing/stretch):** MIDI mapping polish, OSC bridge, WebCodecs offline render, `GEN/Relief`, AT-proto adapter, live-oracle viewer mode, collaborative editing exploration, `OUT`-class recorder as live op only if justified under §20.6.
 
 ---
 
 ## 19. Testing & Acceptance
 
-- **Unit:** graph evaluation (cook order, dirty propagation, feedback delay, async crossfade semantics); schema round-trip with fuzzed unknown fields; migration chains v(n)→v(n+1); taint-gate red-team corpus (keys hidden in params, captions, prompt templates, asset filenames — all must block).
-- **Golden-frame:** headless renders of each template at fixed seeds/inputs diffed against approved plates per tier (tolerance-based; catches shader regressions).
+- **Unit:** graph evaluation (cook order, dirty propagation, feedback delay, Async Arrival Law semantics including streaming text and audio queue-to-cue); schema round-trip with fuzzed unknown fields; migration chains v(n)→v(n+1); taint-gate red-team corpus (keys hidden in params, captions, prompt templates, asset filenames — all must block).
+- **Golden-frame:** headless renders of each template at fixed seeds/inputs diffed against approved plates **per tier and per backend** (WebGL2 mandatory; tolerance-based; catches shader regressions).
 - **Adapter contract tests:** each adapter against a mock server implementing its wire format; `openai-compat` additionally smoke-tested against a real local Ollama in CI-optional mode.
 - **Publish integration:** dockerized local relay + local Blossom server; assert event kinds/tags/signatures; assert the kind-1 note renders a working link.
 - **Performance gates in CI:** cook-time budget, bundle-size budgets, template time-to-first-render.
@@ -638,18 +708,18 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 
 ## Appendix A: Operator Catalog v1
 
-*(35 operators. `mod` = has modulatable params; `async` = obeys §7.1 async invariant.)*
+*(35 operators net. `mod` = modulatable params; `async` = Async Arrival Law §7.1.)*
 
-**SRC (7):** `Time` · `AudioIn` (mod) · `Pointer` · `Keyboard` · `MIDI` · `Seed` · `Constant`
-**SIG (8):** `LFO` (mod) · `Envelope` (mod) · `Math` · `Smooth/Lag` (mod) · `Map/Remap` · `Logic` · `Trigger/Gate` · `Noise` (mod)
-**GEN (5, all async):** `PromptLoom` · `Oracle` · `Icon` · `Antiphon` · `Relief`
+**SRC (5):** `Time` · `AudioIn` (mod) · `Input` (mod) · `MIDI` · `Seed`
+**SIG (6):** `LFO` (mod) · `Envelope` (mod) · `Math` (incl. remap) · `Smooth` (mod) · `Logic` (incl. trigger/gate) · `Noise` (mod)
+**GEN (4, all async):** `PromptLoom` · `Oracle` · `Icon` · `Antiphon`
 **GEO (6):** `PointCloud` (async load) · `Primitive` · `Instancer` (mod) · `SDFField` (mod) · `Particles` (mod) · `Glyph` (async font)
 **MAT (4):** `PointsMaterial` (mod) · `GoldLeafPBR` (mod) · `Halo` (mod) · `CustomShader` (mod)
-**FX (6, all mod):** `Bloom` · `Godrays` · `ChromaticAberration` · `Grain` · `Vignette` · `Feedback` *(ToneMap lives on `OUT/Render`)*
-**LIT (5):** `Station` · `Cue` · `Transition` · `Caption` · `Choice`
-**OUT (4):** `Render` (owns camera + tonemap + flash limiter) · `AudioOut` · `Recorder` · `Publish`
+**FX (6, all mod):** `Bloom` · `Godrays` · `ChromaticAberration` · `Grain` · `Vignette` · `Feedback` *(ToneMap + flash limiter on `OUT/Render`)*
+**LIT (2):** `Caption` · `Choice` *(Station/Cue/Transition live only in `story.json`)*
+**OUT (2):** `Render` · `AudioOut`
 
-*(Count note: SRC 7 + SIG 8 + GEN 5 + GEO 6 + MAT 4 + FX 6 + LIT 5 + OUT 4 = 45 gross; `Constant`, `Logic`, `Trigger`, `Seed`, `Cue` may merge into neighbors during implementation to land at ~35–40 net. The cap in §20.6 refers to net shipped count.)*
+**Explicitly out of v1 catalog:** `Constant`, standalone `Map/Remap`, standalone `Trigger/Gate`, `Pointer` and `Keyboard` as separate ops (merged into `SRC/Input`), `Relief`, `Station`/`Cue`/`Transition` ops, `Publish` op, `Recorder` op (video/still are export pipeline). §20.6 one-in-one-out applies to this net list.
 
 ## Appendix B: Schemas & Example Manifest
 
@@ -676,7 +746,7 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 }
 ```
 
-`graph.json` node instance (illustrative):
+`graph.json` node instance (illustrative). The `modulations` array is serialization sugar for first-class modulation edges (§7.2), not a second parallel graph model:
 
 ```json
 {
@@ -690,8 +760,10 @@ Each milestone is shippable and demoable. Names are liturgical; scopes are contr
 
 ## Appendix C: Glossary
 
+- **Async Arrival Law** — async outputs may not snap on `status → fresh`; each port type has a normative arrival policy (§7.1). Signal and field must crossfade (§4.3).
 - **Station** — one scene/movement of an experience; the narrative atom.
-- **Shrine** — a collapsed sub-graph with promoted parameters; the remix atom.
+- **Shrine** — a collapsed sub-graph with promoted parameters; nested graph macro; the remix atom.
+- **StationPatch** — parameter snapshot + enable mask over the single project graph (not a separate graph).
 - **Radiance Stack** — the fixed-order post-processing chain.
 - **Procession View** — the timeline/sequence editor.
 - **Cooking** — lazy dirty-flag graph evaluation (TouchDesigner's term, kept deliberately).
