@@ -125,6 +125,7 @@ export class GraphEvaluator {
       audio: this.frame.audio,
       loadAsset: this.host.loadAsset,
       renderBackend: this.host.renderBackend,
+      scheduleDeferred: this.host.scheduleDeferred,
       getInput: (port) => inputIndex.get(port),
       getParam: (id) => {
         const v = effective[id];

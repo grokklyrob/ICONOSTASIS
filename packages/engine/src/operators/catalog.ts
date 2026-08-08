@@ -1,6 +1,6 @@
 /**
- * M0 operator catalog registration (architecture.md §18).
- * Grows as operators land; GEN family is out of scope for M0.
+ * Operator catalog registration (architecture.md §18).
+ * M0 six + M1 growth; GEN family remains out of scope until M2.
  */
 
 import type { OperatorRegistry } from "../registry/registry.js";
@@ -10,8 +10,9 @@ import { lfoFactory } from "./sig/lfo.js";
 import { pointCloudFactory } from "./geo/pointCloud.js";
 import { bloomFactory } from "./fx/bloom.js";
 import { renderFactory } from "./out/render.js";
+import { syntheticAsyncFactory } from "./test/syntheticAsync.js";
 
-/** Register all operators implemented so far for M0. */
+/** Register M0 six operators (seraph demo / regression baseline). */
 export function registerM0Operators(registry: OperatorRegistry): void {
   registry.register(timeFactory);
   registry.register(audioInFactory);
@@ -19,6 +20,14 @@ export function registerM0Operators(registry: OperatorRegistry): void {
   registry.register(pointCloudFactory);
   registry.register(bloomFactory);
   registry.register(renderFactory);
+}
+
+/**
+ * M0 six + M1 probe ops (TEST/SyntheticAsync is not part of the net-31 catalog).
+ */
+export function registerM1Operators(registry: OperatorRegistry): void {
+  registerM0Operators(registry);
+  registry.register(syntheticAsyncFactory);
 }
 
 export { timeFactory, SRC_TIME_TYPE } from "./src/time.js";
@@ -36,3 +45,14 @@ export {
   OUT_RENDER_TYPE,
   DEFAULT_CLEAR_COLOR,
 } from "./out/render.js";
+export {
+  syntheticAsyncFactory,
+  TEST_SYNTHETIC_ASYNC_TYPE,
+  setSyntheticGpuFadeQueue,
+  resetSyntheticGpuFadeQueue,
+  getSyntheticGpuFadeQueue,
+} from "./test/syntheticAsync.js";
+export type {
+  SyntheticAsyncView,
+  SyntheticMode,
+} from "./test/syntheticAsync.js";

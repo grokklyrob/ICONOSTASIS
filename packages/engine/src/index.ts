@@ -1,6 +1,6 @@
 /**
  * @iconostasis/engine — public barrel.
- * M0: contracts, cook, operators, graph JSON (architecture.md §17–§18).
+ * M0–M1: contracts, cook, operators, graph JSON, async arrival (architecture.md §17–§18).
  * UI-free and headless-testable; imports nothing from apps/* or editor packages.
  */
 
@@ -24,6 +24,7 @@ export type {
 export type {
   AssetLoader,
   CookContext,
+  DeferredScheduler,
   EvaluatorHost,
   FrameTime,
   JsonValue,
@@ -63,6 +64,7 @@ export { remapSignal, resolveEffectiveParams } from "./cook/modulation.js";
 
 export {
   registerM0Operators,
+  registerM1Operators,
   timeFactory,
   SRC_TIME_TYPE,
   audioInFactory,
@@ -77,12 +79,42 @@ export {
   renderFactory,
   OUT_RENDER_TYPE,
   DEFAULT_CLEAR_COLOR,
+  syntheticAsyncFactory,
+  TEST_SYNTHETIC_ASYNC_TYPE,
+  setSyntheticGpuFadeQueue,
+  resetSyntheticGpuFadeQueue,
+  getSyntheticGpuFadeQueue,
 } from "./operators/catalog.js";
 export type {
   LfoWaveform,
   PointCloudAsyncView,
   CacheScope,
+  SyntheticAsyncView,
+  SyntheticMode,
 } from "./operators/catalog.js";
+
+export {
+  asyncCacheKey,
+  parseCacheScope,
+} from "./async/cacheScope.js";
+export {
+  DEFAULT_ARRIVAL_WINDOW_MS,
+  AUDIO_IDLE_FADE_IN_MS,
+  clamp01,
+  crossfadeSignal,
+  textStreamAppend,
+  beginHoldSwap,
+  commitHoldSwap,
+  onAudioFresh,
+  onAudioCueBoundary,
+  beginSignalCrossfade,
+  advanceSignalCrossfade,
+} from "./async/arrival.js";
+export {
+  GpuFadeQueue,
+  maxConcurrentGpuFades,
+} from "./async/gpuFadeQueue.js";
+export type { DeviceTier } from "./async/gpuFadeQueue.js";
 
 export type { AudioFrameSnapshot } from "./audio/types.js";
 export {

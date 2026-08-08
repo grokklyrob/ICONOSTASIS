@@ -29,6 +29,12 @@ export type JsonValue =
 /** Host-provided asset fetch for async loaders (GEO/PointCloud). */
 export type AssetLoader = (path: string) => Promise<ArrayBuffer>;
 
+/**
+ * Schedule work after cook returns (AMD-01).
+ * Tests inject a flushable queue; hosts may use setTimeout.
+ */
+export type DeferredScheduler = (fn: () => void, delayMs: number) => void;
+
 export interface CookContext {
   time: number;
   delta: number;
@@ -45,6 +51,11 @@ export interface CookContext {
   loadAsset?: AssetLoader;
   /** Optional GPU/mock render backend for OUT/Render. */
   renderBackend?: RenderBackend;
+  /**
+   * Optional deferred scheduler for async settle (TEST/SyntheticAsync, future GEN).
+   * Must not be awaited by cook — fire-and-forget only (AMD-01).
+   */
+  scheduleDeferred?: DeferredScheduler;
   /** Read a wired input port value (upstream last output). */
   getInput(port: string): unknown;
   /**
@@ -62,6 +73,7 @@ export interface CookContext {
 export interface EvaluatorHost {
   loadAsset?: AssetLoader;
   renderBackend?: RenderBackend;
+  scheduleDeferred?: DeferredScheduler;
 }
 
 /**
