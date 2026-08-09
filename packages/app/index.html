@@ -21,6 +21,15 @@
             Open
             <input id="btn-open" type="file" accept=".icx,application/zip" hidden />
           </label>
+          <button type="button" id="btn-providers" title="Provider Registry + Vault">
+            Providers
+          </button>
+          <button type="button" id="btn-m2" title="Load M2 oracle demo graph">
+            M2 demo
+          </button>
+          <button type="button" id="btn-fire-oracle" title="Bump Oracle fire (GEN invoke)">
+            Fire Oracle
+          </button>
           <button type="button" id="btn-perform" title="Perform Mode">
             Perform
           </button>
@@ -84,9 +93,18 @@
       </main>
 
       <section id="perform-hud" class="perform-hud" hidden aria-label="Perform">
+        <div id="perform-arming" class="perform-arming" aria-label="GEN arming"></div>
         <div id="perform-controls" class="perform-controls"></div>
         <button type="button" id="btn-panic" class="panic">Black</button>
       </section>
+
+      <dialog id="providers-dialog" class="providers-dialog" aria-label="Provider Registry">
+        <form method="dialog" class="providers-dialog-bar">
+          <span class="providers-dialog-title">Oracle · BYOK</span>
+          <button type="submit" value="close" class="providers-btn">Close</button>
+        </form>
+        <div id="providers-panel" class="providers-panel"></div>
+      </dialog>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

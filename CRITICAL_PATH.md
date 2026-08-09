@@ -1,9 +1,9 @@
 # ICONOSTASIS — Critical Path
 
-**Status:** Accepted (advisor review v0.2); **M0 exit accepted 2026-08-08**; **M1 exit accepted 2026-08-08**  
+**Status:** Accepted (advisor review v0.2); **M0/M1/M2a exits accepted 2026-08-08**  
 **Spec:** `architecture.md` Draft v0.3  
 **Source:** bitmonk advisor §3 + AMD-20 / AMD-01 / M2a-before-M2b flags; v0.3 load-path matrix (AMD-21/22)  
-**Current milestone:** **Paused** after M1 — next is **M2a** (`packages/gen` boundary). See `handoff.md` + `reviews/m1-exit.md`.
+**Current milestone:** **M2b in progress** — GEN family + adapters + helper + provenance landed; M2 live demo exit still open. See `handoff.md`.
 
 This document is the dependency and parallelism contract for multi-agent implementation. It does not replace milestone demos in §18; it sequences packages so agents do not thrash the same files.
 

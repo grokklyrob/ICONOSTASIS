@@ -1,0 +1,23 @@
+{
+  "name": "@iconostasis/gen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BYOK adapters + SecretRef fetch boundary (§9, §15.1, §18 M2a)",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}

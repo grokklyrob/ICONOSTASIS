@@ -5,7 +5,12 @@
   "description": "ICONOSTASIS monorepo — browser-native instrument for generative visual liturgies",
   "scripts": {
     "test": "pnpm --filter @iconostasis/engine test",
+    "test:gen": "pnpm --filter @iconostasis/gen test",
+    "test:helper": "pnpm --filter @iconostasis/helper test",
+    "smoke:ollama": "node packages/gen/scripts/smoke-ollama.mjs",
+    "helper": "pnpm --filter @iconostasis/helper start",
     "typecheck": "pnpm --filter @iconostasis/engine typecheck",
+    "typecheck:gen": "pnpm --filter @iconostasis/gen typecheck",
     "demo": "pnpm --filter @iconostasis/m0-demo dev",
     "app": "pnpm --filter @iconostasis/app dev",
     "test:app": "pnpm --filter @iconostasis/app test",

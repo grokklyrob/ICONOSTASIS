@@ -62,9 +62,26 @@ export { OperatorRegistry } from "./registry/registry.js";
 export { GraphEvaluator } from "./cook/evaluator.js";
 export { remapSignal, resolveEffectiveParams } from "./cook/modulation.js";
 
+export type {
+  GenCapability,
+  GenCookHost,
+  GenHostRequest,
+  GenHostResult,
+  GenHostUsage,
+} from "./types/genHost.js";
+
+export {
+  createEmptyProvenance,
+  parseProvenance,
+  appendProvenance,
+  type ProvenanceDoc,
+  type ProvenanceRecord,
+} from "./persist/provenance.js";
+
 export {
   registerM0Operators,
   registerM1Operators,
+  registerM2Operators,
   timeFactory,
   SRC_TIME_TYPE,
   audioInFactory,
@@ -135,6 +152,20 @@ export {
   setSyntheticGpuFadeQueue,
   resetSyntheticGpuFadeQueue,
   getSyntheticGpuFadeQueue,
+  promptLoomFactory,
+  GEN_PROMPT_LOOM_TYPE,
+  fillPromptTemplate,
+  formatSlotValue,
+  listTemplateSlots,
+  oracleFactory,
+  GEN_ORACLE_TYPE,
+  iconFactory,
+  GEN_ICON_TYPE,
+  isGenFieldHandle,
+  ICON_STYLE_PRESETS,
+  antiphonFactory,
+  GEN_ANTIPHON_TYPE,
+  isGenAudioHandle,
 } from "./operators/catalog.js";
 export type {
   LfoWaveform,
@@ -144,6 +175,12 @@ export type {
   SyntheticMode,
   MathOp,
   LogicOp,
+  OracleView,
+  GenFieldHandle,
+  IconView,
+  GenAudioHandle,
+  AntiphonView,
+  AudioOutState,
 } from "./operators/catalog.js";
 
 export type {

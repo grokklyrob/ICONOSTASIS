@@ -14,6 +14,7 @@ export default defineConfig({
         repoRoot,
         "packages/engine/src/index.ts",
       ),
+      "@iconostasis/gen": path.join(repoRoot, "packages/gen/src/index.ts"),
     },
     dedupe: ["three"],
   },
@@ -28,7 +29,7 @@ export default defineConfig({
       "three/addons/postprocessing/UnrealBloomPass.js",
       "three/addons/postprocessing/OutputPass.js",
       "three/addons/postprocessing/ShaderPass.js",
-      "fflate",
     ],
+    // fflate is pulled via @iconostasis/engine; do not force-include from app root
   },
 });

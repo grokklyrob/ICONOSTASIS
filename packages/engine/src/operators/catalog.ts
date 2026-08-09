@@ -1,6 +1,6 @@
 /**
  * Operator catalog registration (architecture.md §18, Appendix A).
- * GEN family remains out of scope until M2.
+ * M2b: GEN family registered via registerM2Operators.
  */
 
 import type { OperatorRegistry } from "../registry/registry.js";
@@ -36,6 +36,10 @@ import { choiceFactory } from "./lit/choice.js";
 import { renderFactory } from "./out/render.js";
 import { audioOutFactory } from "./out/audioOut.js";
 import { syntheticAsyncFactory } from "./test/syntheticAsync.js";
+import { promptLoomFactory } from "./gen/promptLoom.js";
+import { oracleFactory } from "./gen/oracle.js";
+import { iconFactory } from "./gen/icon.js";
+import { antiphonFactory } from "./gen/antiphon.js";
 
 /** Register M0 six operators (seraph demo / regression baseline). */
 export function registerM0Operators(registry: OperatorRegistry): void {
@@ -94,6 +98,18 @@ export function registerM1Operators(registry: OperatorRegistry): void {
   registry.register(syntheticAsyncFactory);
 }
 
+/**
+ * M1 catalog + GEN family (M2b).
+ * Net catalog grows by 4 GEN ops; player must not wire GenCookHost.
+ */
+export function registerM2Operators(registry: OperatorRegistry): void {
+  registerM1Operators(registry);
+  registry.register(promptLoomFactory);
+  registry.register(oracleFactory);
+  registry.register(iconFactory);
+  registry.register(antiphonFactory);
+}
+
 export { timeFactory, SRC_TIME_TYPE } from "./src/time.js";
 export { audioInFactory, SRC_AUDIO_IN_TYPE } from "./src/audioIn.js";
 export { inputFactory, SRC_INPUT_TYPE } from "./src/input.js";
@@ -148,6 +164,7 @@ export {
   DEFAULT_CLEAR_COLOR,
 } from "./out/render.js";
 export { audioOutFactory, OUT_AUDIO_OUT_TYPE } from "./out/audioOut.js";
+export type { AudioOutState } from "./out/audioOut.js";
 export {
   syntheticAsyncFactory,
   TEST_SYNTHETIC_ASYNC_TYPE,
@@ -159,3 +176,28 @@ export type {
   SyntheticAsyncView,
   SyntheticMode,
 } from "./test/syntheticAsync.js";
+export {
+  promptLoomFactory,
+  GEN_PROMPT_LOOM_TYPE,
+  fillPromptTemplate,
+  formatSlotValue,
+  listTemplateSlots,
+} from "./gen/promptLoom.js";
+export {
+  oracleFactory,
+  GEN_ORACLE_TYPE,
+} from "./gen/oracle.js";
+export type { OracleView } from "./gen/oracle.js";
+export {
+  iconFactory,
+  GEN_ICON_TYPE,
+  isGenFieldHandle,
+  ICON_STYLE_PRESETS,
+} from "./gen/icon.js";
+export type { GenFieldHandle, IconView } from "./gen/icon.js";
+export {
+  antiphonFactory,
+  GEN_ANTIPHON_TYPE,
+  isGenAudioHandle,
+} from "./gen/antiphon.js";
+export type { GenAudioHandle, AntiphonView } from "./gen/antiphon.js";

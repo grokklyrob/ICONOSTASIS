@@ -12,6 +12,7 @@ import type {
 import type { PointGovernor } from "../tier/pointGovernor.js";
 import type { ProbeResult } from "../tier/probe.js";
 import type { DeviceTier } from "../tier/types.js";
+import type { GenCookHost } from "./genHost.js";
 import type { ParamSpec, ParamValue } from "./params.js";
 import type { PortSpec } from "./ports.js";
 
@@ -76,6 +77,11 @@ export interface CookContext {
   probeResult?: ProbeResult;
   /** Convenience: probeResult.tier when present. */
   deviceTier?: DeviceTier;
+  /**
+   * Optional GEN invoke host (M2). Absent in player — GEN ops error / use cache.
+   * Cook must never await genHost.invoke (AMD-01).
+   */
+  genHost?: GenCookHost;
   /** Read a wired input port value (upstream last output). */
   getInput(port: string): unknown;
   /**
@@ -96,6 +102,8 @@ export interface EvaluatorHost {
   scheduleDeferred?: DeferredScheduler;
   pointGovernor?: PointGovernor;
   probeResult?: ProbeResult;
+  /** Authoring/perform GEN path only — never wired in player export. */
+  genHost?: GenCookHost;
 }
 
 /**

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true,
+    // cli.mjs / mockGen.mjs run under bare node (no build step) but are still
+    // imported by server.ts, so they must be part of the typecheck.
+    "allowJs": true,
+    "checkJs": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*"]
+}

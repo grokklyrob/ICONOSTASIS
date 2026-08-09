@@ -62,6 +62,15 @@ export class GraphEvaluator {
     }
   }
 
+  /**
+   * Instance access for host-side sinks (§11.1): OUT/AudioOut and friends
+   * publish state on the instance rather than through an output port, because
+   * the engine stays headless and the host owns Web Audio / GPU.
+   */
+  getInstance(opId: string): OperatorInstance {
+    return this.graph.getInstance(opId);
+  }
+
   /** Read a port value: evaluator store first, then instance getOutput. */
   readPort(opId: string, port: string): unknown {
     const stored = this.outputStore.get(opId)?.get(port);
@@ -184,6 +193,7 @@ export class GraphEvaluator {
       pointGovernor: this.host.pointGovernor,
       probeResult: this.host.probeResult,
       deviceTier: this.host.probeResult?.tier,
+      genHost: this.host.genHost,
       getInput: (port) => inputIndex.get(port),
       getParam: (id) => {
         const v = effective[id];

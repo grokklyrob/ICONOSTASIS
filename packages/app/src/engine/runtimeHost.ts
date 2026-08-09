@@ -13,13 +13,16 @@ import {
   OperatorRegistry,
   packIcx,
   PointGovernor,
-  registerM1Operators,
+  registerM2Operators,
   ThreeWebGLBackend,
   unpackIcx,
   type GraphDocument,
   runCapabilityProbe,
   type AudioFrameSnapshot,
+  type AudioOutState,
+  type GenCookHost,
 } from "@iconostasis/engine";
+import { GenAudioSink } from "../gen/genAudioSink.js";
 import type { ProjectStore } from "../store/projectStore.js";
 
 export class RuntimeHost {
@@ -37,13 +40,41 @@ export class RuntimeHost {
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   private governor: PointGovernor | null = null;
   private lastDocKey = "";
+  /** Session vault secrets for §12.3 taint gate (from GenHost). */
+  private vaultSecretsProvider: (() => readonly string[]) | null = null;
+  private genHost: GenCookHost | null = null;
+  private audioSink: GenAudioSink | null = null;
+  /** OUT/AudioOut op ids in the current graph, refreshed on rebuild. */
+  private audioOutIds: string[] = [];
+  private provenanceProvider:
+    | (() => { schemaVersion: 1; records: unknown[] })
+    | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly store: ProjectStore,
     private readonly setStatus: (s: string) => void,
   ) {
-    registerM1Operators(this.registry);
+    registerM2Operators(this.registry);
+  }
+
+  /**
+   * Wire vault secrets into pack/export taint scans (§12.3, AMD-06).
+   * Provider must return raw secret strings held in session vault only.
+   */
+  setVaultSecretsProvider(fn: () => readonly string[]): void {
+    this.vaultSecretsProvider = fn;
+  }
+
+  /** Wire GEN invoke host (authoring only — never in player). */
+  setGenHost(host: GenCookHost): void {
+    this.genHost = host;
+  }
+
+  setProvenanceProvider(
+    fn: () => { schemaVersion: 1; records: unknown[] },
+  ): void {
+    this.provenanceProvider = fn;
   }
 
   getRegistry(): OperatorRegistry {
@@ -91,6 +122,15 @@ export class RuntimeHost {
     });
     this.governor = new PointGovernor(probe.budgets.pointBudget);
 
+    // Generated voice routes through the analyser, so it drives visuals too.
+    if (this.analyser) {
+      this.audioSink = new GenAudioSink(
+        this.audioCtx,
+        this.analyser,
+        this.setStatus,
+      );
+    }
+
     this.rebuildEvaluator();
     this.t0 = performance.now();
     this.running = true;
@@ -101,6 +141,9 @@ export class RuntimeHost {
   private rebuildEvaluator(): void {
     const doc = this.store.getState().doc;
     this.lastDocKey = JSON.stringify(doc);
+    this.audioOutIds = doc.nodes
+      .filter((n) => n.type === "OUT/AudioOut")
+      .map((n) => n.id);
     const graph = createGraph(deserializeGraph(doc));
     this.evaluator = new GraphEvaluator(graph, this.registry, {
       loadAsset: async (path) => {
@@ -122,6 +165,7 @@ export class RuntimeHost {
         backend: "webgl2",
         floatColorBuffer: false,
       }),
+      genHost: this.genHost ?? undefined,
     });
   }
 
@@ -160,15 +204,24 @@ export class RuntimeHost {
 
   async packCurrent(): Promise<Uint8Array> {
     const doc = this.store.getState().doc;
-    return packIcx({
-      manifest: createDefaultManifest({
-        title: "ICONOSTASIS Project",
+    return packIcx(
+      {
+        manifest: createDefaultManifest({
+          title: "ICONOSTASIS Project",
+          assets: [],
+        }),
+        graph: doc,
+        story: { schemaVersion: 1, stations: [] },
+        provenance: this.provenanceProvider?.() ?? {
+          schemaVersion: 1,
+          records: [],
+        },
         assets: [],
-      }),
-      graph: doc,
-      story: { schemaVersion: 1, stations: [] },
-      assets: [],
-    });
+      },
+      {
+        vaultSecrets: this.vaultSecretsProvider?.() ?? [],
+      },
+    );
   }
 
   async loadIcx(bytes: Uint8Array): Promise<void> {
@@ -212,11 +265,27 @@ export class RuntimeHost {
       frame: this.frame,
       audio: this.audioSnapshot(),
     });
+
+    // Sound whatever the master bus is carrying this frame. OUT/AudioOut is an
+    // OUT sink, so it pulls GEN/Antiphon for us — an unwired Antiphon never
+    // cooks, which is exactly why playback is driven from here and not from the
+    // GEN op itself.
+    if (this.audioSink) {
+      for (const id of this.audioOutIds) {
+        const state = (
+          this.evaluator.getInstance(id) as { lastState?: AudioOutState }
+        ).lastState;
+        if (!state) continue;
+        this.audioSink.setBus(state.gain, state.muted);
+        this.audioSink.present(state.media);
+      }
+    }
   };
 
   dispose(): void {
     this.running = false;
     cancelAnimationFrame(this.raf);
+    this.audioSink?.dispose();
     this.backend?.dispose();
     void this.audioCtx?.close();
   }

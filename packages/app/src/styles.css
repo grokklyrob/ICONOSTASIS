@@ -563,3 +563,191 @@ body,
 #app.mode-perform .arrival-probe {
   display: none;
 }
+
+/* M2a — Provider Registry dialog + arming HUD (§9.3, §9.4) */
+.providers-dialog {
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 40%, transparent);
+  background: color-mix(in srgb, var(--crypt-void) 92%, var(--nave-indigo));
+  color: var(--vellum-bone);
+  width: min(28rem, 94vw);
+  max-height: min(85vh, 40rem);
+  padding: 0;
+  overflow: hidden;
+}
+
+.providers-dialog::backdrop {
+  background: color-mix(in srgb, var(--crypt-void) 70%, transparent);
+}
+
+.providers-dialog-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--biolume-gold) 22%, transparent);
+  margin: 0;
+}
+
+.providers-dialog-title {
+  color: var(--biolume-gold);
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.providers-panel {
+  padding: 0.65rem 0.75rem 1rem;
+  overflow: auto;
+  max-height: calc(min(85vh, 40rem) - 2.5rem);
+}
+
+.providers-panel h2,
+.providers-panel h3 {
+  margin: 0.4rem 0 0.35rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--biolume-gold);
+  font-weight: 600;
+}
+
+.providers-controls,
+.providers-section {
+  margin-bottom: 0.85rem;
+}
+
+.providers-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.25rem 0;
+}
+
+.providers-btn {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 40%, transparent);
+  color: var(--biolume-gold);
+  font: inherit;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.providers-btn:hover {
+  background: color-mix(in srgb, var(--biolume-gold) 12%, transparent);
+}
+
+.providers-btn.danger {
+  border-color: color-mix(in srgb, var(--kenotic-rose) 55%, transparent);
+  color: var(--kenotic-rose);
+}
+
+.providers-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.providers-form input,
+.providers-row select,
+.providers-panel select {
+  background: var(--crypt-void);
+  border: 1px solid color-mix(in srgb, var(--spore-cyan) 30%, transparent);
+  color: var(--vellum-bone);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.providers-list {
+  list-style: none;
+  margin: 0.35rem 0;
+  padding: 0;
+}
+
+.providers-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.25rem 0;
+  font-size: 0.7rem;
+}
+
+.provider-card {
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 22%, transparent);
+  padding: 0.45rem 0.5rem;
+  margin: 0.4rem 0;
+  background: color-mix(in srgb, var(--nave-indigo) 35%, transparent);
+}
+
+.provider-title {
+  font-size: 0.75rem;
+  color: var(--vellum-bone);
+  margin-bottom: 0.15rem;
+}
+
+.tiny {
+  font-size: 0.6rem !important;
+}
+
+.providers-test-result {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.68rem;
+  border: 1px solid color-mix(in srgb, var(--biolume-gold) 30%, transparent);
+  word-break: break-word;
+}
+
+.providers-test-result.ok {
+  border-color: color-mix(in srgb, var(--spore-cyan) 50%, transparent);
+  color: var(--spore-cyan);
+}
+
+.providers-test-result.err {
+  border-color: color-mix(in srgb, var(--kenotic-rose) 50%, transparent);
+  color: var(--kenotic-rose);
+}
+
+.perform-arming {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.arm-btn {
+  background: color-mix(in srgb, var(--crypt-void) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vellum-bone) 35%, transparent);
+  color: color-mix(in srgb, var(--vellum-bone) 70%, transparent);
+  font: inherit;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.arm-btn.armed {
+  border-color: var(--kenotic-rose);
+  color: var(--kenotic-rose);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--kenotic-rose) 35%, transparent);
+}
+
+.spend-meter {
+  font-size: 0.62rem;
+  color: color-mix(in srgb, var(--vellum-bone) 55%, transparent);
+  letter-spacing: 0.04em;
+}
+
+.spend-meter.hard-stop {
+  color: var(--kenotic-rose);
+}
