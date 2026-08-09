@@ -2,7 +2,7 @@
 
 **Status:** Accepted (advisor review v0.2); **M0/M1/M2a exits accepted 2026-08-08**  
 **Spec:** `architecture.md` Draft v0.3  
-**Source:** bitmonk advisor §3 + AMD-20 / AMD-01 / M2a-before-M2b flags; v0.3 load-path matrix (AMD-21/22)  
+**Source:** bitmonk advisor §3 + AMD-20 / AMD-01 / M2a-before-M2b flags; v0.3 load-path matrix (AMD-21/22); AMD-30 BYOK-cloud-first  
 **Current milestone:** **M2b in progress** — GEN family + adapters + helper + provenance landed; M2 live demo exit still open. See `handoff.md`.
 
 This document is the dependency and parallelism contract for multi-agent implementation. It does not replace milestone demos in §18; it sequences packages so agents do not thrash the same files.
@@ -39,7 +39,7 @@ This document is the dependency and parallelism contract for multi-agent impleme
 [M2b breadth] remaining adapters, paired Local Helper, full GEN family, provenance
         │
         ▼
-[M2 exit] live GEN demo (armed/disarmed, spend hard-stop, Ollama path)
+[M2 exit] live GEN demo (armed/disarmed, spend hard-stop, cloud BYOK path)
         │
         ├────────────────────────────┐
         ▼                            ▼
@@ -73,7 +73,7 @@ M5 is stretch; out of critical path.
 |-----------|---------------|-----------------------------------|
 | **M0** | `packages/engine` only | Audio-reactive seraph, patched not coded; graph JSON round-trip |
 | **M1** | `engine` + `app` | All **31 non-GEN** net-catalog ops land (type/ports/params/serialize/cook); Radiance Stack; measured tier + point governor; OPFS + `.icx`; Perform v0; **synthetic async operator** proves Arrival Law (streaming text vs replacement, audio queue-to-cue, GPU fade cap/queue, `cacheScope`, failure) **before any real adapter** |
-| **M2a** | `packages/gen` boundary + vault/registry hooks in `app` | SecretRef single fetch boundary; taint gate; spend ceiling plumbing; arming hooks; first live `openai-compat` (incl. local Ollama) |
+| **M2a** | `packages/gen` boundary + vault/registry hooks in `app` | SecretRef single fetch boundary; taint gate; spend ceiling plumbing; arming hooks; first live `openai-compat` (OpenRouter reference path; any OpenAI-compatible endpoint) |
 | **M2b** | `packages/gen` adapters + `packages/helper` | Remaining adapters; Local Helper with pairing; GEN family complete; provenance; spend meter UX; M2 demo (live + armed/disarmed + hard stop) |
 | **M3** | `packages/story` + `packages/player` + templates | `story.json` authority; four templates with pre-cached GEN artifacts; load paths per §13.1; Via Lucis demo matrix (A)(B)(C) |
 | **M4** | `packages/publish` + `apps/gallery` | Publish once → kind-1 in Buzz + two public clients (working link); same experience via kind 31333 in Cloister |
@@ -118,7 +118,7 @@ After **contracts are frozen** on main:
 | `render/tier` + point governor | Budgets vs particles vs loaders |
 | `packages/engine` persist (icx, OPFS, taint gate) | M1 + M2 taint + M3 export share packer |
 | **`packages/gen` fetch boundary / vault invoke** | **M2a-before-M2b one-writer zone** — adapters must not invent fetch |
-| `packages/gen` `openai-compat` adapter | Shared by local Ollama + cloud; high edit rate in M2 |
+| `packages/gen` `openai-compat` adapter | Shared by every OpenAI-compatible provider, cloud and local; high edit rate in M2 |
 | `packages/app` project store | Editor, perform, vault UI project into one store |
 | Graph editor canvas entry | §7.3 is one surface |
 | Root `package.json`, workspace, base `tsconfig` | Dependency and path alias wars |

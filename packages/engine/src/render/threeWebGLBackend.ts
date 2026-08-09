@@ -11,6 +11,8 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import type { PointCloudGeometry } from "../assets/geometry.js";
+import type { GenFieldHandle } from "./backdropField.js";
+import { ThreeBackdropLayer } from "./threeBackdrop.js";
 import type { BloomPassState } from "./bloomPass.js";
 import type { ChromaticAberrationPassState } from "./chromaticAberrationPass.js";
 import type { GodraysPassState } from "./godraysPass.js";
@@ -87,6 +89,8 @@ export interface ThreeWebGLBackendOptions {
   fov?: number;
   /** Camera distance along +z looking at origin. */
   cameraZ?: number;
+  /** Backdrop decode/install diagnostics — a blank backdrop must not be silent. */
+  onDiagnostic?: (message: string) => void;
 }
 
 export class ThreeWebGLBackend implements RenderBackend {
@@ -100,6 +104,7 @@ export class ThreeWebGLBackend implements RenderBackend {
   private readonly grainPass: ShaderPass;
   private readonly vignettePass: ShaderPass;
   private readonly goldLeafPass: ShaderPass;
+  private readonly backdrop: ThreeBackdropLayer;
   private readonly clock = new THREE.Clock(false);
 
   private points: THREE.Points | null = null;
@@ -108,12 +113,16 @@ export class ThreeWebGLBackend implements RenderBackend {
   private pendingBloom: BloomPassState | null = null;
   private exposure = 1;
   private time = 0;
+  private prevTime = 0;
   private disposed = false;
   private fullW = 1;
   private fullH = 1;
 
   constructor(opts: ThreeWebGLBackendOptions) {
     const canvas = opts.canvas;
+    this.backdrop = new ThreeBackdropLayer({
+      onDiagnostic: opts.onDiagnostic,
+    });
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -127,6 +136,7 @@ export class ThreeWebGLBackend implements RenderBackend {
     this.renderer.toneMappingExposure = 0.9;
 
     this.scene = new THREE.Scene();
+    this.scene.add(this.backdrop.mesh);
     this.camera = new THREE.PerspectiveCamera(
       opts.fov ?? 50,
       Math.max(canvas.clientWidth, 1) / Math.max(canvas.clientHeight, 1),
@@ -196,6 +206,7 @@ export class ThreeWebGLBackend implements RenderBackend {
   };
 
   beginFrame(clearColor: string): void {
+    this.prevTime = this.time;
     this.time = this.clock.getElapsedTime();
     this.scene.background = new THREE.Color(clearColor);
     this.pendingBloom = null;
@@ -207,6 +218,10 @@ export class ThreeWebGLBackend implements RenderBackend {
     this.vignettePass.enabled = false;
     this.goldLeafPass.enabled = false;
     this.bloomPass.enabled = false;
+  }
+
+  setBackdrop(field: GenFieldHandle | undefined): void {
+    this.backdrop.setField(field);
   }
 
   drawPoints(call: DrawPointsCall): void {
@@ -275,6 +290,14 @@ export class ThreeWebGLBackend implements RenderBackend {
   }
 
   endFrame(): void {
+    // Exposure here is already flash-limiter scaled; clamping at 1 means the
+    // param can dim the icon but never blow it past its authored values.
+    this.backdrop.update(
+      this.time - this.prevTime,
+      this.fullW / Math.max(1, this.fullH),
+      Math.min(1, this.exposure),
+    );
+
     if (this.pendingBloom) {
       this.bloomPass.enabled = this.pendingBloom.enabled;
       this.bloomPass.threshold = this.pendingBloom.threshold;
@@ -297,6 +320,8 @@ export class ThreeWebGLBackend implements RenderBackend {
   dispose(): void {
     this.disposed = true;
     window.removeEventListener("resize", this.onResize);
+    this.scene.remove(this.backdrop.mesh);
+    this.backdrop.dispose();
     this.disposePoints();
     this.composer.dispose();
     this.renderer.dispose();

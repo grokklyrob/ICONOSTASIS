@@ -25,12 +25,55 @@ const minimalGraph = {
 };
 
 describe("GenHost M2a bridge", () => {
-  it("seeds local-ollama provider without secrets", () => {
+  it("seeds the OpenRouter BYOK provider without secrets", () => {
     const host = new GenHost();
-    const inst = host.stack.registry.getInstance("local-ollama");
+    const inst = host.stack.registry.getInstance("openrouter");
     expect(inst?.adapterId).toBe("openai-compat");
+    // BYOK (§4.2): ships keyless and demands a key. The user supplies it.
     expect(inst?.secretRef).toBeNull();
+    expect(inst?.config.requireAuth).toBe(true);
+    expect(String(inst?.config.baseUrl)).toMatch(/^https:\/\//);
+  });
+
+  it("reports the BYOK default as unusable until a key is bound", () => {
+    const host = new GenHost();
+    // "" resolves to the first instance — the keyless BYOK default.
+    expect(host.isProviderUsable("")).toBe(false);
+    expect(host.isProviderUsable("openrouter")).toBe(false);
+    // The keyless mock is usable precisely because it demands no key.
+    expect(host.isProviderUsable("local-mock")).toBe(true);
+    expect(host.isProviderUsable("nonexistent")).toBe(false);
+
+    const ref = host.putSecret("openrouter", "sk-or-test-value-123456");
+    host.bindSecretToProvider("openrouter", ref);
+    expect(host.isProviderUsable("openrouter")).toBe(true);
+    expect(host.isProviderUsable("")).toBe(true);
+  });
+
+  it("still accepts a local inference server (AMD-30 keeps §4.2 intact)", () => {
+    // AMD-30 removed local inference from the M2 gate, not from the product.
+    // openai-compat is generic, so a localhost baseUrl with no key must work —
+    // if this ever fails, the amendment has quietly become a pillar change.
+    const host = new GenHost();
+    host.upsertProvider({
+      id: "local-llm",
+      adapterId: "openai-compat",
+      label: "Local inference",
+      config: {
+        baseUrl: "http://127.0.0.1:11434/v1",
+        model: "smollm:135m",
+        requireAuth: false,
+      },
+      secretRef: null,
+      routing: "direct",
+    });
+
+    const inst = host.stack.registry.getInstance("local-llm");
     expect(inst?.config.requireAuth).toBe(false);
+    expect(inst?.secretRef).toBeNull();
+    expect(
+      host.stack.registry.listInstances().map((i) => i.id),
+    ).toContain("local-llm");
   });
 
   it("edit armed by default; perform disarmed", () => {

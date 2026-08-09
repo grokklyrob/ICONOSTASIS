@@ -1,6 +1,7 @@
 /**
  * openai-compat adapter (§9.3).
- * OpenAI, OpenRouter, Groq, Mistral, Together, local Ollama / LM Studio / llama.cpp.
+ * OpenAI, OpenRouter, Groq, Mistral, Together, and local servers (Ollama /
+ * LM Studio / llama.cpp) — one adapter, user-set baseUrl + model (§9.3).
  * Builds FetchDescriptors only — never calls fetch; never sees raw secrets (AMD-06).
  */
 
@@ -33,22 +34,23 @@ export const openaiCompatConfigSchema = {
       label: "Base URL",
       type: "url" as const,
       required: true,
-      default: "http://127.0.0.1:11434/v1",
-      description: "OpenAI-compatible API root (Ollama default shown)",
+      default: "https://openrouter.ai/api/v1",
+      description:
+        "OpenAI-compatible API root. Cloud (OpenRouter, OpenAI, Groq, Together) or a local server — Ollama/LM Studio/llama.cpp are http://127.0.0.1:11434/v1 and friends.",
     },
     {
       id: "model",
       label: "Model",
       type: "string" as const,
       required: true,
-      default: "llama3.2",
+      default: "anthropic/claude-3.5-haiku",
     },
     {
       id: "requireAuth",
       label: "Require API key",
       type: "boolean" as const,
-      default: false,
-      description: "Off for local Ollama; on for cloud OpenAI-compat hosts",
+      default: true,
+      description: "On for cloud hosts; off for a local server that takes no key",
     },
   ],
 } as const;

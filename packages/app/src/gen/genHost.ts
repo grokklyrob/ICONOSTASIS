@@ -15,28 +15,45 @@ import {
 
 export type GenHostListener = () => void;
 
-const DEFAULT_OLLAMA: Omit<ProviderInstance, "secretRef"> = {
-  id: "local-ollama",
+/**
+ * Reference BYOK provider (§18 M2 demo, AMD-30). OpenRouter resells Anthropic,
+ * xAI and others behind one OpenAI-compatible endpoint, so a single user key
+ * reaches Claude and Grok without a vendor-specific adapter.
+ *
+ * Ships with **no key** — BYOK means the user supplies one (§4.2). Hold a key
+ * in the session vault and bind it here; nothing is written to disk (§15.1).
+ *
+ * This is a *default*, not a restriction. `openai-compat` is generic: point
+ * `baseUrl` at any OpenAI-compatible endpoint, local inference servers
+ * included (`http://127.0.0.1:11434/v1` for Ollama, LM Studio, llama.cpp).
+ * AMD-30 removed local inference from the milestone gate, not from the product.
+ */
+const DEFAULT_OPENROUTER: Omit<ProviderInstance, "secretRef"> = {
+  id: "openrouter",
   adapterId: OPENAI_COMPAT_ADAPTER_ID,
-  label: "Local Ollama",
+  label: "OpenRouter (BYOK)",
   config: {
-    baseUrl: "http://127.0.0.1:11434/v1",
-    model: "smollm:135m",
-    requireAuth: false,
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "anthropic/claude-3.5-haiku",
+    requireAuth: true,
   },
   routing: "direct",
 };
 
 /**
- * Local Helper mock image/TTS (§18 "or mock in UI"). Ollama serves neither
- * image.generate nor speech.synthesize, so Icon/Antiphon need their own target.
- * Requires `pnpm helper`; the mock routes are unpaired and CORS-open on
- * loopback, so this works on the direct route.
+ * Local Helper mock text/image/TTS (§18 "or mock in UI"). Cloud text providers
+ * generally serve neither image.generate nor speech.synthesize on the same
+ * endpoint, so Icon/Antiphon need their own target. Requires `pnpm helper`; the
+ * mock routes are unpaired and CORS-open on loopback, so the direct route works.
+ *
+ * The chat route makes the whole graph drivable with no key and no spend, which
+ * is what keeps development and CI free. It is **not** the §18 text path —
+ * that requires a real provider on the user's own key.
  */
 const DEFAULT_MOCK: Omit<ProviderInstance, "secretRef"> = {
   id: "local-mock",
   adapterId: OPENAI_COMPAT_ADAPTER_ID,
-  label: "Local Helper mock (image + TTS)",
+  label: "Local Helper mock (text + image + TTS)",
   config: {
     baseUrl: "http://127.0.0.1:47821/v1/mock",
     model: "mock-icon-1",
@@ -61,6 +78,23 @@ function toHostResult(r: CapResult): GenHostResult {
   };
 }
 
+/**
+ * `?spendCeiling=N` — start the session at a low ceiling.
+ *
+ * §18 M2 requires demonstrating the hard spend stop. At the 50,000-token
+ * default that costs 50,000 tokens to reach, so the stop is undemonstrable in
+ * a demo and untestable in sign-off. Lowering only the *starting* ceiling
+ * changes no policy: raising it is still an explicit user action, and the stop
+ * itself is the same code path.
+ */
+function ceilingFromQuery(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const raw = new URLSearchParams(window.location.search).get("spendCeiling");
+  if (raw === null) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 export class GenHost implements GenCookHost {
   readonly stack: GenStack;
   private readonly listeners = new Set<GenHostListener>();
@@ -68,9 +102,9 @@ export class GenHost implements GenCookHost {
   private lastTestAt: number | null = null;
 
   constructor() {
-    this.stack = createGenStack();
+    this.stack = createGenStack({ spendCeiling: ceilingFromQuery() });
     this.stack.registry.upsertInstance({
-      ...DEFAULT_OLLAMA,
+      ...DEFAULT_OPENROUTER,
       secretRef: null,
     });
     this.stack.registry.upsertInstance({
@@ -152,6 +186,26 @@ export class GenHost implements GenCookHost {
   bindSecretToProvider(providerId: string, secretRef: SecretRef | null): void {
     this.stack.registry.setInstanceSecret(providerId, secretRef);
     this.emit();
+  }
+
+  /**
+   * Will the provider this op resolves to actually be able to call out?
+   *
+   * `providerInstanceId: ""` resolves to the first registered instance, which
+   * since AMD-30 is the BYOK default — keyless on arrival. So the honest
+   * first-run answer is `false`, and the UI should say so rather than let a
+   * fire vanish with no visible cause.
+   *
+   * Usable means: needs no key, or needs one and has one bound. It does not
+   * mean the endpoint is reachable — only the invoke can tell you that.
+   */
+  isProviderUsable(providerInstanceId: string): boolean {
+    const id = providerInstanceId.trim();
+    const inst = id
+      ? this.stack.registry.getInstance(id)
+      : this.stack.registry.listInstances()[0];
+    if (!inst) return false;
+    return inst.config.requireAuth !== true || inst.secretRef !== null;
   }
 
   raiseSpendCeiling(n: number): void {
