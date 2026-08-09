@@ -1,7 +1,7 @@
 import { inflateSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { mockImagePng, mockSpeechWav } from "./mockGen.mjs";
+import { mockAntiphonLine, mockImagePng, mockSpeechWav } from "./mockGen.mjs";
 import { createHelperServer, MOCK_BASE_PATH } from "./server.js";
 
 const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -170,6 +170,73 @@ describe("helper mock routes", () => {
     });
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-methods")).toContain("POST");
+  });
+
+  it("serves a non-streaming chat completion with usage", async () => {
+    const s = await createHelperServer();
+    closers.push(() => s.close());
+
+    const res = await fetch(`${s.baseUrl}${MOCK_BASE_PATH}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "mock-oracle-1",
+        messages: [{ role: "user", content: "Ambient light is 0.4." }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      choices: { message: { content: string }; finish_reason: string }[];
+      usage: { total_tokens: number };
+    };
+    expect(body.choices[0]?.message.content.length).toBeGreaterThan(0);
+    expect(body.choices[0]?.finish_reason).toBe("stop");
+    // Spend accounting needs usage; without it the meter can only estimate.
+    expect(body.usage.total_tokens).toBeGreaterThan(0);
+  });
+
+  it("streams SSE deltas and terminates with finish_reason then [DONE]", async () => {
+    const s = await createHelperServer();
+    closers.push(() => s.close());
+
+    const res = await fetch(`${s.baseUrl}${MOCK_BASE_PATH}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stream: true,
+        messages: [{ role: "user", content: "Ambient light is 0.4." }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+
+    const raw = await res.text();
+    const payloads = raw
+      .split("\n\n")
+      .map((b) => b.trim())
+      .filter((b) => b.startsWith("data:"))
+      .map((b) => b.slice(5).trim());
+
+    expect(payloads.at(-1)).toBe("[DONE]");
+
+    const events = payloads
+      .filter((p) => p !== "[DONE]")
+      .map((p) => JSON.parse(p) as {
+        choices: { delta: { content?: string }; finish_reason: string | null }[];
+      });
+
+    const text = events
+      .map((e) => e.choices[0]?.delta.content ?? "")
+      .join("");
+    expect(text.trim().length).toBeGreaterThan(0);
+    expect(events.at(-1)?.choices[0]?.finish_reason).toBe("stop");
+  });
+
+  it("seeds the line from the prompt so a changed prompt changes the text", () => {
+    expect(mockAntiphonLine("lux 0.1")).not.toBe(mockAntiphonLine("lux 0.9"));
+    expect(mockAntiphonLine("lux 0.1")).toBe(mockAntiphonLine("lux 0.1"));
   });
 
   it("404s an unknown mock route without falling through to the proxy", async () => {

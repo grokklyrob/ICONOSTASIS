@@ -93,6 +93,10 @@ export class RuntimeHost {
         canvas: this.canvas,
         fov: 50,
         cameraZ: 2.35,
+        // Surfaces GEN/Icon's backdrop arriving (or failing to decode) the same
+        // way the audio leg reports "antiphon voiced" — a blank backdrop and a
+        // backdrop that never arrived look identical on screen otherwise.
+        onDiagnostic: (msg) => this.setStatus(`[icon] ${msg}`),
       });
     }
     this.audioCtx = new AudioContext();

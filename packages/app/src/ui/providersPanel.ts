@@ -36,7 +36,7 @@ export function mountProvidersPanel(
       el(
         "p",
         "muted tiny",
-        "BYOK · session vault · single fetch boundary. Browser→Ollama needs OLLAMA_ORIGINS including this origin (or *).",
+        "BYOK · session vault · single fetch boundary. Hold your own key below and bind it to a provider — it lives in memory only. OpenRouter reaches Claude and Grok through one key. Providers that refuse browser origins route through the Local Helper.",
       ),
     );
 
@@ -251,7 +251,8 @@ export function mountProvidersPanel(
         actions.appendChild(bind);
       }
 
-      if (inst.id !== "local-ollama") {
+      // The reference BYOK provider is not removable — it is the §18 demo path.
+      if (inst.id !== "openrouter") {
         const rm = el("button", "providers-btn danger", "Remove") as HTMLButtonElement;
         rm.type = "button";
         rm.addEventListener("click", () => {
@@ -267,15 +268,22 @@ export function mountProvidersPanel(
 
     const addForm = el("div", "providers-form");
     addForm.appendChild(el("h3", undefined, "Add openai-compat"));
+    addForm.appendChild(
+      el(
+        "p",
+        "muted tiny",
+        "Any OpenAI-compatible endpoint, cloud or local — a local inference server (Ollama, LM Studio, llama.cpp) is just http://127.0.0.1:11434/v1 with the key field left empty.",
+      ),
+    );
     const labelIn = el("input") as HTMLInputElement;
     labelIn.placeholder = "label";
-    labelIn.value = "Cloud OpenAI-compat";
+    labelIn.value = "Another OpenAI-compat provider";
     const baseIn = el("input") as HTMLInputElement;
     baseIn.placeholder = "baseUrl";
-    baseIn.value = "https://openrouter.ai/api/v1";
+    baseIn.value = "https://api.groq.com/openai/v1";
     const modelNew = el("input") as HTMLInputElement;
     modelNew.placeholder = "model";
-    modelNew.value = "openai/gpt-4o-mini";
+    modelNew.value = "llama-3.3-70b-versatile";
     const addBtn = el(
       "button",
       "providers-btn",

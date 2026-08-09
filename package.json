@@ -7,7 +7,7 @@
     "test": "pnpm --filter @iconostasis/engine test",
     "test:gen": "pnpm --filter @iconostasis/gen test",
     "test:helper": "pnpm --filter @iconostasis/helper test",
-    "smoke:ollama": "node packages/gen/scripts/smoke-ollama.mjs",
+    "smoke:provider": "node packages/gen/scripts/smoke-provider.mjs",
     "helper": "pnpm --filter @iconostasis/helper start",
     "typecheck": "pnpm --filter @iconostasis/engine typecheck",
     "typecheck:gen": "pnpm --filter @iconostasis/gen typecheck",

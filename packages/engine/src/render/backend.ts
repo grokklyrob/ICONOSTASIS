@@ -3,6 +3,7 @@
  */
 
 import type { PointCloudGeometry } from "../assets/geometry.js";
+import type { GenFieldHandle } from "./backdropField.js";
 import type { BloomPassState } from "./bloomPass.js";
 import type { ChromaticAberrationPassState } from "./chromaticAberrationPass.js";
 import type { GodraysPassState } from "./godraysPass.js";
@@ -18,6 +19,12 @@ export interface DrawPointsCall {
 
 export interface RenderBackend {
   beginFrame(clearColor: string): void;
+  /**
+   * Full-frame generated backdrop behind the points; `undefined` clears it.
+   * Called every frame so the backend can drive its own crossfade. Optional —
+   * backends without a texture path simply omit it and keep the clear colour.
+   */
+  setBackdrop?(field: GenFieldHandle | undefined): void;
   drawPoints(call: DrawPointsCall): void;
   applyBloom(state: BloomPassState): void;
   /** Optional Radiance Stack passes — backends may no-op if unsupported. */
@@ -34,6 +41,7 @@ export interface RenderBackend {
 export class MockRenderBackend implements RenderBackend {
   readonly frames: Array<{
     clearColor: string;
+    backdrops: Array<GenFieldHandle | undefined>;
     draws: DrawPointsCall[];
     blooms: BloomPassState[];
     godrays: GodraysPassState[];
@@ -45,6 +53,7 @@ export class MockRenderBackend implements RenderBackend {
 
   private current: {
     clearColor: string;
+    backdrops: Array<GenFieldHandle | undefined>;
     draws: DrawPointsCall[];
     blooms: BloomPassState[];
     godrays: GodraysPassState[];
@@ -57,6 +66,7 @@ export class MockRenderBackend implements RenderBackend {
   beginFrame(clearColor: string): void {
     this.current = {
       clearColor,
+      backdrops: [],
       draws: [],
       blooms: [],
       godrays: [],
@@ -65,6 +75,13 @@ export class MockRenderBackend implements RenderBackend {
       vignettes: [],
       toneMaps: [],
     };
+  }
+
+  setBackdrop(field: GenFieldHandle | undefined): void {
+    if (!this.current) {
+      throw new Error("MockRenderBackend.setBackdrop outside beginFrame");
+    }
+    this.current.backdrops.push(field);
   }
 
   drawPoints(call: DrawPointsCall): void {

@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import type { PointCloudGeometry } from "../../assets/geometry.js";
 import { GraphEvaluator } from "../../cook/evaluator.js";
 import { createGraph } from "../../graph/graph.js";
+import type { GenFieldHandle } from "../../render/backdropField.js";
 import { MockRenderBackend } from "../../render/backend.js";
+import { estimateLumaProxy } from "../../render/flashLimiter.js";
 import { runCapabilityProbe } from "../../tier/probe.js";
 import { OperatorRegistry } from "../../registry/registry.js";
 import type { OperatorInstance } from "../../types/operator.js";
@@ -46,6 +48,44 @@ function makeGeomSourceFactory(geom: PointCloudGeometry | undefined) {
         },
         cook(ctx) {
           ctx.setOutput("geometry", geom);
+        },
+        dispose() {},
+        serialize: () => ({}),
+      };
+    },
+  };
+}
+
+function makeField(prompt: string): GenFieldHandle {
+  return {
+    kind: "gen-field",
+    mime: "image/png",
+    bytes: new ArrayBuffer(8),
+    prompt,
+  };
+}
+
+function makeFieldSourceFactory(field: GenFieldHandle | undefined) {
+  return {
+    type: "Test/Field",
+    family: "GEN" as const,
+    inputs: [],
+    outputs: [{ id: "field", type: "field" as const }],
+    params: [],
+    create(id: string): OperatorInstance {
+      return {
+        id,
+        type: "Test/Field",
+        family: "GEN",
+        params: {},
+        dirty: true,
+        alwaysDirty: true,
+        getOutput: (p) => {
+          if (p !== "field") throw new Error(p);
+          return field;
+        },
+        cook(ctx) {
+          ctx.setOutput("field", field);
         },
         dispose() {},
         serialize: () => ({}),
@@ -305,6 +345,101 @@ describe("OUT/Render", () => {
     expect(backend.lastFrame?.godrays).toHaveLength(0);
     expect(backend.lastFrame?.grains).toHaveLength(0);
     expect(backend.lastFrame?.toneMaps).toEqual(["goldLeaf"]);
+  });
+
+  it("passes a wired gen-field to the backend as a backdrop", () => {
+    const backend = new MockRenderBackend();
+    const registry = new OperatorRegistry();
+    registry.register(makeGeomSourceFactory(makeGeom(1)));
+    registry.register(makeFieldSourceFactory(makeField("a gold-ground seraph")));
+    registry.register(renderFactory);
+
+    const graph = createGraph({
+      schemaVersion: 1,
+      nodes: [
+        { id: "pc", type: "Test/Geom", params: {} },
+        { id: "icon", type: "Test/Field", params: {} },
+        { id: "out", type: OUT_RENDER_TYPE, params: { exposure: 1 } },
+      ],
+      wires: [
+        {
+          id: "w1",
+          from: { opId: "pc", port: "geometry" },
+          to: { opId: "out", port: "geometry" },
+        },
+        {
+          id: "w2",
+          from: { opId: "icon", port: "field" },
+          to: { opId: "out", port: "backdrop" },
+        },
+      ],
+      modulations: [],
+    });
+
+    const evaluator = new GraphEvaluator(graph, registry, {
+      renderBackend: backend,
+    });
+    evaluator.tick({ time: 0, delta: 1, frame: 0 });
+
+    expect(backend.lastFrame?.backdrops).toHaveLength(1);
+    expect(backend.lastFrame?.backdrops[0]?.prompt).toBe(
+      "a gold-ground seraph",
+    );
+  });
+
+  it("clears the backdrop every frame when nothing is wired", () => {
+    const backend = new MockRenderBackend();
+    const registry = new OperatorRegistry();
+    registry.register(makeGeomSourceFactory(makeGeom(1)));
+    registry.register(renderFactory);
+
+    const graph = createGraph({
+      schemaVersion: 1,
+      nodes: [
+        { id: "pc", type: "Test/Geom", params: {} },
+        { id: "out", type: OUT_RENDER_TYPE, params: { exposure: 1 } },
+      ],
+      wires: [
+        {
+          id: "w1",
+          from: { opId: "pc", port: "geometry" },
+          to: { opId: "out", port: "geometry" },
+        },
+      ],
+      modulations: [],
+    });
+
+    const evaluator = new GraphEvaluator(graph, registry, {
+      renderBackend: backend,
+    });
+    evaluator.tick({ time: 0, delta: 1, frame: 0 });
+
+    // Called with undefined, not skipped — the backend needs the fade-out cue.
+    expect(backend.lastFrame?.backdrops).toEqual([undefined]);
+  });
+
+  it("counts a backdrop toward the flash limiter with no geometry present", () => {
+    // A full-frame image is the whole frame's luminance. Without this the proxy
+    // returns 0 and a black→bright-icon swap would be entirely undamped.
+    const dark = estimateLumaProxy({
+      exposure: 1,
+      bloomStrength: 0,
+      hasGeometry: false,
+    });
+    const withBackdrop = estimateLumaProxy({
+      exposure: 1,
+      bloomStrength: 0,
+      hasGeometry: false,
+      hasBackdrop: true,
+    });
+
+    expect(dark).toBe(0);
+    expect(withBackdrop).toBeGreaterThan(0);
+
+    // Geometry-only behaviour is unchanged (M0 callers pass no hasBackdrop).
+    expect(
+      estimateLumaProxy({ exposure: 1, bloomStrength: 0, hasGeometry: true }),
+    ).toBeCloseTo(0.35);
   });
 
   it("rise-rate flash limiter actually damps a sudden exposure jump", () => {

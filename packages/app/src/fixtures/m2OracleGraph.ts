@@ -1,15 +1,21 @@
 /**
- * M2 demo graph — seraph visual + signals→PromptLoom→Oracle→Caption→Antiphon
- * (§18 M2). Local Ollama for text via empty providerInstanceId (first
- * text-capable provider); the Local Helper mock for speech.
+ * M2 demo graph — the whole §18 M2 demo line in one document:
+ * signals→PromptLoom→Oracle→{Caption, Antiphon (voice), Icon (texture)}.
+ * Text goes to the first text-capable provider via an empty providerInstanceId
+ * — the OpenRouter BYOK default (§18/AMD-30), which needs a key bound in the
+ * Providers panel. With no key, point oracle1 at `local-mock` to drive the
+ * graph for free. Speech and image always use the Local Helper mock.
  *
  * Bump Oracle `fire` (Perform slider or Fire Oracle) to invoke. Oracle's
- * `complete` then triggers Antiphon, whose audio reaches OUT/AudioOut — the
- * master bus the host reads to sound it.
+ * `complete` then triggers both Antiphon and Icon: the antiphon audio reaches
+ * OUT/AudioOut (the master bus the host reads to sound it) and the icon reaches
+ * OUT/Render's `backdrop` (the texture the WebGL backend crossfades in).
  *
- * GEN/Icon is deliberately absent: its `field` output has no consumer in the
- * render path yet (OUT/Render's field inputs are all post-FX slots), and an
- * unwired GEN op is never pulled by a sink, so it would never even cook.
+ * Every GEN op here terminates in an OUT sink on purpose. `evaluator.tick`
+ * pull-evaluates from `family === "OUT"` only, so a GEN op with no sink
+ * downstream is never invoked at all — it does not silently no-op, it simply
+ * never cooks. LIT/Caption is family LIT, so the caption tail is not a sink;
+ * Oracle is reachable because of the Antiphon and Icon chains, not the caption.
  */
 
 import type { GraphDocument } from "@iconostasis/engine";
@@ -85,7 +91,8 @@ export const m2OracleGraph: GraphDocument = {
       type: "GEN/Antiphon",
       params: {
         // Explicit: empty would resolve to the first speech-capable provider,
-        // which is local-ollama (openai-compat claims the cap) and would fail.
+        // which is the cloud text provider (openai-compat claims the cap on any
+        // baseUrl) and would fail against an endpoint that serves no speech.
         providerInstanceId: "local-mock",
         model: "tts-1",
         maxTokens: 0,
@@ -100,6 +107,39 @@ export const m2OracleGraph: GraphDocument = {
         audioPlaying: false,
       },
       position: [760, 380],
+    },
+    {
+      // The written line becomes the image prompt — this is the "signals→
+      // prompt→image" leg, with Oracle's text as the middle term.
+      id: "loom2",
+      type: "GEN/PromptLoom",
+      params: {
+        template: "{{text}} — a single icon panel of that line.",
+      },
+      position: [520, -100],
+    },
+    {
+      id: "icon1",
+      type: "GEN/Icon",
+      params: {
+        // Explicit for the same reason as antiphon1: empty resolves to the
+        // first image-capable provider, which serves no images.
+        providerInstanceId: "local-mock",
+        model: "mock-icon-1",
+        maxTokens: 0,
+        temperature: 0,
+        seed: 0,
+        triggerMode: "event",
+        fire: 0,
+        threshold: 0.5,
+        // Slower than Antiphon: an image swap is the heavier visual event.
+        minIntervalMs: 6000,
+        cacheScope: "station",
+        stationId: "default",
+        stylePreset: "gold-ground",
+        styleSuffix: "",
+      },
+      position: [760, -100],
     },
     {
       id: "audioout1",
@@ -179,6 +219,27 @@ export const m2OracleGraph: GraphDocument = {
       id: "w_antiphon_bus",
       from: { opId: "antiphon1", port: "media" },
       to: { opId: "audioout1", port: "media" },
+    },
+    {
+      id: "w_oracle_loom2",
+      from: { opId: "oracle1", port: "text" },
+      to: { opId: "loom2", port: "text" },
+    },
+    {
+      id: "w_loom2_icon",
+      from: { opId: "loom2", port: "text" },
+      to: { opId: "icon1", port: "prompt" },
+    },
+    {
+      // Same edge as Antiphon: draw the finished line, not each streaming delta.
+      id: "w_oracle_icon_event",
+      from: { opId: "oracle1", port: "complete" },
+      to: { opId: "icon1", port: "event" },
+    },
+    {
+      id: "w_icon_backdrop",
+      from: { opId: "icon1", port: "field" },
+      to: { opId: "out1", port: "backdrop" },
     },
     {
       id: "w_pc_geom",

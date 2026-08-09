@@ -15,6 +15,10 @@ import {
   type PointCloudGeometry,
 } from "../../assets/geometry.js";
 import {
+  isGenFieldHandle,
+  type GenFieldHandle,
+} from "../../render/backdropField.js";
+import {
   isBloomPassState,
   type BloomPassState,
   createBloomPassState,
@@ -61,6 +65,9 @@ export const renderFactory: OperatorFactory = {
   inputs: [
     // Frozen port names — M1 MAT/Assemble / M0 bloom must still feed these.
     { id: "geometry", type: "geometry" },
+    // Generated image → texture behind the points (§18 M2 "image→texture").
+    // Additive port: existing graph docs reference ports only via wires.
+    { id: "backdrop", type: "field", label: "backdrop (optional)" },
     { id: "bloom", type: "field", label: "bloom (optional)" },
     { id: "godrays", type: "field", label: "godrays (optional)" },
     {
@@ -131,6 +138,7 @@ export const renderFactory: OperatorFactory = {
         const toneMap = parseToneMapCurve(ctx.getParam("toneMap"));
 
         const geomRaw = ctx.getInput("geometry");
+        const backdropRaw = ctx.getInput("backdrop");
         const bloomRaw = ctx.getInput("bloom");
         const godraysRaw = ctx.getInput("godrays");
         const caRaw = ctx.getInput("chromaticAberration");
@@ -141,6 +149,12 @@ export const renderFactory: OperatorFactory = {
           geomRaw,
         )
           ? geomRaw
+          : undefined;
+
+        const backdrop: GenFieldHandle | undefined = isGenFieldHandle(
+          backdropRaw,
+        )
+          ? backdropRaw
           : undefined;
 
         const bloomIn: BloomPassState | undefined = isBloomPassState(bloomRaw)
@@ -179,6 +193,7 @@ export const renderFactory: OperatorFactory = {
           bloomStrength:
             bloomForLuma?.enabled === true ? bloomForLuma.strength : 0,
           hasGeometry: geometry !== undefined,
+          hasBackdrop: backdrop !== undefined,
         });
         const limitedLuma = applyRiseRateClamp(
           flashState.prevLuma,
@@ -204,6 +219,10 @@ export const renderFactory: OperatorFactory = {
         }
 
         backend.beginFrame(clearColor);
+
+        // Before the points, so the icon reads as ground and they as figure.
+        // Sent every frame, including undefined, so the backend can fade out.
+        backend.setBackdrop?.(backdrop);
 
         if (geometry) {
           backend.drawPoints({

@@ -1,6 +1,9 @@
 /**
  * Live path: real TCP mock OpenAI-compat server (§19 adapter contracts).
- * Optional real Ollama: set ICONOSTASIS_OLLAMA_SMOKE=1 (or auto when daemon up).
+ *
+ * Optional live provider smoke (AMD-30): provider-agnostic, since the adapter
+ * is. Set ICONOSTASIS_SMOKE_BASE_URL (+ _MODEL, + _API_KEY for cloud hosts).
+ * Skips cleanly when unset — §19 marks this CI-optional.
  */
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -8,27 +11,10 @@ import { createGenStack } from "../createGenStack.js";
 import { startMockOpenAIServer } from "../test/mockOpenAIServer.js";
 import { OPENAI_COMPAT_ADAPTER_ID } from "./openaiCompat.js";
 
-const ollamaBase =
-  process.env.OLLAMA_HOST?.replace(/\/$/, "") ?? "http://127.0.0.1:11434";
-const ollamaV1 = ollamaBase.endsWith("/v1") ? ollamaBase : `${ollamaBase}/v1`;
-const forceOllama = process.env.ICONOSTASIS_OLLAMA_SMOKE === "1";
+const smokeBase = process.env.ICONOSTASIS_SMOKE_BASE_URL?.replace(/\/+$/, "");
+const smokeModel = process.env.ICONOSTASIS_SMOKE_MODEL;
+const smokeKey = process.env.ICONOSTASIS_SMOKE_API_KEY;
 
-async function ollamaModels(): Promise<string[] | null> {
-  try {
-    const res = await fetch(`${ollamaBase.replace(/\/v1$/, "")}/api/tags`, {
-      signal: AbortSignal.timeout(1500),
-    });
-    if (!res.ok) return null;
-    const body = (await res.json()) as {
-      models?: { name?: string }[];
-    };
-    return (body.models ?? [])
-      .map((m) => m.name)
-      .filter((n): n is string => typeof n === "string" && n.length > 0);
-  } catch {
-    return null;
-  }
-}
 
 describe("openai-compat live TCP path", () => {
   const closers: Array<() => Promise<void>> = [];
@@ -139,44 +125,29 @@ describe("openai-compat live TCP path", () => {
   });
 });
 
-describe("openai-compat Ollama smoke (optional)", () => {
-  it("live Ollama text.generate when daemon + model available", async () => {
-    const models = await ollamaModels();
-    if (models === null || models.length === 0) {
-      if (forceOllama) {
-        throw new Error(
-          "ICONOSTASIS_OLLAMA_SMOKE=1 but Ollama unreachable or has no models",
-        );
-      }
-      // §19 CI-optional: skip cleanly when Ollama is not installed
-      return;
-    }
-
-    const preferred = process.env.OLLAMA_MODEL;
-    const model =
-      (preferred && models.some((m) => m === preferred || m.startsWith(`${preferred}:`))
-        ? preferred
-        : null) ??
-      models.find((m) => m.startsWith("smollm")) ??
-      models[0]!;
+describe("openai-compat live provider smoke (optional)", () => {
+  it("invokes text.generate against a configured real endpoint", async () => {
+    // §19 CI-optional. BYOK: never invent a key, never spend without opt-in.
+    if (!smokeBase || !smokeModel) return;
 
     const stack = createGenStack();
+    const secretRef = smokeKey ? stack.vault.put("smoke", smokeKey) : null;
     stack.registry.upsertInstance({
-      id: "ollama",
+      id: "smoke",
       adapterId: OPENAI_COMPAT_ADAPTER_ID,
-      label: "Ollama",
+      label: "Live smoke target",
       config: {
-        baseUrl: ollamaV1,
-        model,
-        requireAuth: false,
+        baseUrl: smokeBase,
+        model: smokeModel,
+        requireAuth: secretRef !== null,
       },
-      secretRef: null,
+      secretRef,
       routing: "direct",
     });
     stack.arming.setMode("edit");
 
     const result = await stack.runtime.invoke({
-      providerInstanceId: "ollama",
+      providerInstanceId: "smoke",
       cap: "text.generate",
       req: {
         prompt: "Reply with exactly one word: lumen",
@@ -188,7 +159,7 @@ describe("openai-compat Ollama smoke (optional)", () => {
 
     expect(
       result.status,
-      `Ollama invoke failed (model=${model}): ${result.errorMessage ?? ""}`,
+      `live invoke failed (${smokeBase}, model=${smokeModel}): ${result.errorMessage ?? ""}`,
     ).toBe("ok");
     expect(result.text && result.text.length > 0).toBe(true);
     expect(stack.spend.snapshot().used).toBeGreaterThan(0);

@@ -61,12 +61,20 @@ export function estimateLumaProxy(opts: {
   exposure: number;
   bloomStrength: number;
   hasGeometry: boolean;
+  /**
+   * A generated backdrop covers every pixel, so it is a flash risk on its own —
+   * a dark scene swapping to a bright icon must be damped like any other rise.
+   */
+  hasBackdrop?: boolean;
 }): number {
-  if (!opts.hasGeometry) return 0;
+  const hasBackdrop = opts.hasBackdrop ?? false;
+  if (!opts.hasGeometry && !hasBackdrop) return 0;
   const exp = Math.max(0, opts.exposure);
   const bloom = Math.max(0, opts.bloomStrength);
   // Base scene contribution + bloom tail; units are abstract [0, ∞).
-  return exp * (0.35 + bloom * 0.25);
+  const geometry = opts.hasGeometry ? 0.35 + bloom * 0.25 : 0;
+  const backdrop = hasBackdrop ? 0.4 : 0;
+  return exp * (geometry + backdrop);
 }
 
 /**

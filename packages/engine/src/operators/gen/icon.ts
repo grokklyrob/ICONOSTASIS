@@ -4,6 +4,10 @@
  */
 
 import { asyncCacheKey, parseCacheScope } from "../../async/cacheScope.js";
+import {
+  isGenFieldHandle,
+  type GenFieldHandle,
+} from "../../render/backdropField.js";
 import type {
   OperatorFactory,
   OperatorInstance,
@@ -29,23 +33,9 @@ export const ICON_STYLE_PRESETS: Record<string, string> = {
     ", mycelial gothic ornament, indigo nave light, sacred geometry",
 };
 
-/** Headless field handle for generated images (GPU upload is host-side). */
-export interface GenFieldHandle {
-  kind: "gen-field";
-  mime: string;
-  bytes: ArrayBuffer;
-  width?: number;
-  height?: number;
-  prompt: string;
-}
-
-export function isGenFieldHandle(v: unknown): v is GenFieldHandle {
-  return (
-    typeof v === "object" &&
-    v !== null &&
-    (v as GenFieldHandle).kind === "gen-field"
-  );
-}
+// The handle type lives with the render substrate that consumes it — OUT/Render
+// and the WebGL backend both need it, and the op is only one producer.
+export { isGenFieldHandle, type GenFieldHandle };
 
 export interface IconView {
   status: AsyncPortState["status"];

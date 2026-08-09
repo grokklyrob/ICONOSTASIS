@@ -110,7 +110,14 @@ btnFireOracle.addEventListener("click", () => {
   }
   const nextFire = Math.floor(Number(oracle.params.fire ?? 0)) + 1;
   store.setParam(oracle.id, "fire", nextFire);
-  setStatus(`Oracle fire → ${nextFire} (Ollama if local-ollama up)`);
+  const usable = genHost.isProviderUsable(
+    String(oracle.params.providerInstanceId ?? ""),
+  );
+  setStatus(
+    usable
+      ? `Oracle fire → ${nextFire}`
+      : `Oracle fire → ${nextFire} · that provider has no key — bind one in Providers, or set ${oracle.id}.providerInstanceId to local-mock`,
+  );
 });
 
 function applyChrome(): void {

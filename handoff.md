@@ -1,12 +1,15 @@
 # Handoff — ICONOSTASIS (M2b in progress)
 
-**Date:** 2026-08-08  
+**Date:** 2026-08-09  
 **Persona:** bitmonk  
 **Spec:** `architecture.md` Draft **v0.3**  
 **Sequencing:** `CRITICAL_PATH.md`  
 **Process:** `AGENTS.md`
 
-**Status: M2b IN PROGRESS** — GEN family + adapters + Local Helper + provenance landed; full M2 live demo sign-off still open.
+**Status: M2b IN PROGRESS** — GEN family + adapters + Local Helper + provenance landed. GEN/Icon
+unblocked; demo driven live; **AMD-30 moved the M2 gate to cloud BYOK (OpenRouter)**. Blocking
+M2 exit: an **evaluator rebuild storm on GEN arrival** that discards async operator state — see
+part 4 below. Verify Oracle→OpenRouter on a real key after that is fixed.
 
 | Exit | Record |
 |---|---|
@@ -65,6 +68,10 @@ SIGTERM (128+15), not a crash. Backgrounded, the same server ran 15+ minutes cle
 
 ### Prior session — diagnosis + two papercuts
 
+> **Superseded by AMD-30.** This subsection is kept as history. `smoke-ollama.mjs` no longer
+> exists (it is `smoke-provider.mjs`), `pnpm smoke:ollama` is `pnpm smoke:provider`, and
+> `DEFAULT_OLLAMA` is `DEFAULT_OPENROUTER`. Do not chase these paths.
+
 No milestone progress. The demo exit is exactly where it was.
 
 | Change | File |
@@ -84,6 +91,9 @@ Everything project-side is healthy — re-confirmed, not assumed:
 - Headless replay of `RuntimeHost.loop` over the M2 demo graph — real engine, real
   `seraph.bin`, 900 frames: **1 evaluator rebuild, heap flat 22–26MB**. No cook runaway,
   no rebuild storm, no leak. (Harness was temporary and is deleted.)
+  > **Do not trust this as rebuild-storm evidence.** The replay had no GEN arrivals and no doc
+  > mutation, which are exactly the conditions that trigger the storm found in part 4. A
+  > regression harness for that defect must fire a GEN op and mutate a param.
 
 ### This session — `Buffer` on the browser paths (blocked Icon + Antiphon)
 
@@ -207,32 +217,148 @@ be softened.
 
 Counts after: engine **157**, gen 40, helper 14, app 11. All typechecks clean.
 
-### Still open for M2 *demo* exit (§18)
+### This session — Icon unblocked, and the demo driven end to end
 
-> *signals→prompt→image→texture and generated voice, live, on the user's own key — including fully-local Ollama; armed/disarmed; hard spend stop.*
+**The GEN/Icon design decision is made and landed: option (1), a `backdrop` field input on
+`OUT/Render` plus texture upload in the backend.** §5 (line 282) defines `field` as a
+texture/render-target handle and §9.4 gives Icon a `field` output, so options (2) tint-the-
+points and (3) preview-panel do not satisfy §18's "image→**texture**". The port is additive —
+graph docs reference ports only through wires, so existing documents still load.
 
-1. ~~Graph demo: AudioIn/LFO → PromptLoom → Oracle (Ollama) live~~ **done, browser-verified**
-2. Antiphon vs mock TTS ~~done, browser-verified~~; **Icon still blocked** — see below
-3. Bitmonk UI sign-off: Perform disarm/arm + spend hard-stop — **not yet driven**; only edit
-   mode was exercised. Perform arms separately and the spend meter is untested live.
-4. Optional: Providers panel helper pair UX polish (+ fix the now-wrong CORS warning copy)
+| Piece | Where |
+|---|---|
+| `GenFieldHandle` moved to the render substrate that consumes it | `engine/src/render/backdropField.ts` |
+| `backdrop` field input; sent to the backend **every frame**, `undefined` included | `operators/out/render.ts` |
+| `setBackdrop?()` on `RenderBackend` + recording in `MockRenderBackend` | `render/backend.ts` |
+| Full-frame quad, decode, cover-fit, texture crossfade | `render/threeBackdrop.ts` (new) |
+| Backdrop counts toward the flash-limiter luma proxy | `render/flashLimiter.ts` |
+| Icon wired: Oracle text → `loom2` → Icon → `out1.backdrop` | `fixtures/m2OracleGraph.ts` |
+| Mock `/v1/mock/chat/completions` (SSE + non-streaming) | `helper/src/mockGen.mjs` |
+| `?spendCeiling=N` start-ceiling override | `app/src/gen/genHost.ts` |
+
+Two notes on the render change:
+
+- **The 1.2s crossfade in `threeBackdrop.ts` is a flash guard, not decoration.** `OUT/Render`'s
+  rise-rate damper scales an exposure proxy for the *points*; it cannot dim a background
+  texture. A swap that always takes 1.2s cannot strobe. Do not shorten it to zero (§16.4).
+- `estimateLumaProxy` previously returned 0 whenever `hasGeometry` was false, so a
+  backdrop-only frame was entirely undamped. It now takes `hasBackdrop`; geometry-only
+  behaviour is unchanged and asserted.
+
+**`?spendCeiling=N` exists because the hard stop was otherwise undemonstrable.** At the
+50,000-token default, showing §18's hard spend stop costs 50,000 tokens. The override lowers
+only the *starting* ceiling — raising it is still an explicit user action and the stop is the
+same code path.
+
+### M2 demo exit — driven live in-browser 2026-08-09
+
+| §18 clause | Evidence |
+|---|---|
+| signals→prompt→**image→texture** | Icon → `out1.backdrop`; gold-ground nimbus renders behind the seraph, crossfades on re-fire |
+| generated **voice** | `antiphon voiced: "The lamp answers along the rood before the dark." (2.9s)` |
+| **armed/disarmed** in Perform | Disarmed fire refused: `GEN disarmed — Arm in Providers or Perform HUD`, spend unchanged at 155. Armed fire: 155 → 192 tokens |
+| **hard spend stop** | `Session spend: 115/100 tokens · HARD STOP`; +ceiling released it and the next fire succeeded |
+
+`POST /v1/mock/{chat/completions, audio/speech, images/generations}` → **200** on every armed
+fire; zero console errors.
+
+**Not satisfied: the Ollama leg.** §18 wants the text live *on the user's own key, including a
+fully-local Ollama run*. **Ollama is not installed on this Mac** — `which ollama` fails. The
+prior "Oracle → Ollama, direct from the browser → 200" evidence is from the **Windows** box
+(hence the Windows Terminal section above). Everything verified this session used the mock
+chat route. Re-run Enter → M2 demo → Fire Oracle on a machine with Ollama, with `oracle1`'s
+`providerInstanceId` left **empty** (it resolves to `local-ollama`), before signing M2 off.
+
+Observed, not a bug: repeated fires on an unchanging prompt do not re-voice. `GenAudioSink.present`
+dedupes by token, and the mock line is deterministic per prompt, so the same utterance is
+correctly not replayed. A real provider at temperature 0.7 varies the line.
+
+### This session, part 4 — BYOK cloud-first (AMD-30), and a rebuild storm found
+
+**Spec amendment AMD-30 landed** (`architecture.md` amendments table, §18 M2a/M2b, §19;
+mirrored in `CRITICAL_PATH.md`). The M2 demo gate no longer names Ollama; it names a cloud
+BYOK provider with **OpenRouter as the reference path**. §4.2's "including local inference
+servers" is **unchanged and still true** — `openai-compat` is generic, so a user-supplied
+`http://127.0.0.1:11434/v1` still works. The amendment narrowed the *gate*, not the product.
+
+Why OpenRouter specifically: it resells Anthropic and xAI behind one OpenAI-compatible
+endpoint, so a single user key reaches Claude and Grok with no vendor-specific adapter.
+
+**Worth knowing before writing onboarding copy:** a Claude Pro/Max subscription and an
+X Premium+ subscription are **not** API access. The Messages API needs a console-issued key
+with its own billing; xAI is the same. There is no OAuth path that lets a browser app spend a
+consumer subscription. §22's glossary blurs this ("credentials/subscriptions") — do not
+promise subscription auth in UI copy.
+
+| Change | Where |
+|---|---|
+| `DEFAULT_OLLAMA` → `DEFAULT_OPENROUTER` (keyless, `requireAuth: true`, not removable) | `app/src/gen/genHost.ts` |
+| `isProviderUsable(id)` — `""` resolves to the first instance | same |
+| Fire-Oracle status only warns when the resolved provider has no key | `app/src/main.ts` |
+| openai-compat defaults now cloud-first; local servers documented, not default | `gen/src/adapters/openaiCompat.ts` |
+| `smoke:ollama` → `smoke:provider` (env-driven, provider-agnostic) | `gen/scripts/smoke-provider.mjs` |
+| Optional live test env-driven, not Ollama-specific | `gen/src/adapters/openaiCompat.live.test.ts` |
+| BYOK panel copy; "Add openai-compat" hints the local-server path | `app/src/ui/providersPanel.ts` |
+
+Two guards added: `genHost.test.ts` asserts the default ships keyless **and** that a local
+inference server can still be registered — if that second test ever fails, AMD-30 has quietly
+become a §4.2 pillar change.
+
+**Verified in-browser:** registry shows OpenRouter (BYOK, no key, no Remove) + the mock; a
+keyless fire fails closed with **no request leaving the browser** and a status line telling you
+to bind a key or use `local-mock`; with `local-mock` the status is clean and Oracle→Antiphon
+runs (`antiphon voiced: "Dust waits at the gate and does not fail." (2.9s)`).
+
+#### Open defect: evaluator rebuild storm on GEN arrival (pre-existing, not from AMD-30)
+
+The icon backdrop rendered reliably earlier in the session and then stopped. Chasing it turned
+up the actual cause, and it is **not** in the backdrop code.
+
+Evidence, one second of console:
+
+```
+12:51:09  antiphon voiced: "Dust waits at the gate…" (2.9s)
+12:51:09  running · patched graph
+12:51:09  antiphon voiced: "Dust waits at the gate…" (2.9s)   ← same utterance
+12:51:09  running · patched graph
+12:51:09  antiphon voiced: "Dust waits at the gate…" (2.9s)
+12:51:09  running · patched graph
+12:51:09  antiphon voiced: "Dust waits at the gate…" (2.9s)
+```
+
+`RuntimeHost.loop` calls `syncGraphIfNeeded()` **every frame**, which `JSON.stringify`s the
+whole doc and calls `rebuildEvaluator()` on any difference. A rebuild constructs fresh operator
+instances, which **resets GEN trigger state and discards `lastGoodValue`/`presented`**. So an
+arrival that lands near a doc mutation re-fires the op, and `GEN/Icon.presented` is thrown away
+before `OUT/Render` can read it — which is exactly why the backdrop is intermittent while the
+audio leg (whose sink state lives on the host, not the graph) survives.
+
+Two separate problems in there:
+1. **Rebuilds destroy async operator state.** GEN ops must survive a rebuild, or the Arrival
+   Law (§7.1 `lastGoodValue`) does not hold across ordinary editing.
+2. **Per-frame `JSON.stringify` of the whole doc** is a §16.1 cook-budget problem on its own.
+
+The earlier "1 evaluator rebuild, heap flat over 900 frames" measurement did **not** cover this
+— it was a headless replay with no GEN arrivals and no doc mutation.
+
+`ThreeBackdropLayer` now takes an `onDiagnostic` callback, surfaced by the app as `[icon] …`,
+so a backdrop that fails to decode is no longer indistinguishable from one that never arrived.
+That diagnostic is what made this findable; keep it.
 
 ### Explicit next
 
-- ~~M2 demo graph fixture~~ (`fixtures/m2OracleGraph.ts` + chrome **M2 demo** / **Fire Oracle**)
-- Live bitmonk: Enter → M2 demo → Fire Oracle (Ollama) → Perform arm/disarm
-- ~~Antiphon live path~~ — mock endpoint + `OUT/AudioOut` playback landed; needs browser
-  sign-off (`pnpm helper` must be running).
-- **GEN/Icon is blocked on a design decision, not on code.** Its `field` output has nowhere
-  to land: `OUT/Render`'s four `field` inputs are all post-FX slots (bloom, godrays, grain,
-  vignette) and `threeWebGLBackend` has no texture path at all. §18 asks for
-  "image→**texture**", so this needs one of:
-  1. a colour/backdrop `field` input on `OUT/Render` + texture upload in the backend;
-  2. generated image as point-cloud colour source (tints the seraph);
-  3. an app-side preview panel only — proves arrival, does **not** meet §18's wording.
-  (1) and (2) touch `OUT/Render` / render-tier, which `CRITICAL_PATH.md` §4 marks
-  **one-writer**. Decide before opening that file.
-- Then `reviews/m2-exit.md` when demo accepted
+1. **Fix the evaluator rebuild storm** (see above) — this is now the top item. GEN operator
+   state must survive `rebuildEvaluator()`, and `syncGraphIfNeeded` must stop stringifying the
+   whole doc every frame. Touches `packages/app` runtime host and possibly engine cook state;
+   `CRITICAL_PATH.md` §4 marks the cook/arrival surface one-writer, so do it alone.
+2. **Then re-verify the Icon backdrop leg.** It rendered correctly earlier today (screenshotted,
+   both edit and Perform) and the engine-side path has a passing test, but it cannot be signed
+   off while rebuilds are discarding `presented`.
+3. **Verify Oracle→OpenRouter on a real key** — the §18 text clause under AMD-30. Bind a key in
+   Providers, leave `oracle1.providerInstanceId` empty, Fire Oracle. This is now doable on this
+   Mac; it was not while the gate named Ollama.
+4. Then `reviews/m2-exit.md` when the demo is accepted.
+- Optional: Providers panel helper pair UX polish
 
 ~~**Known unknown for the live path:** CORS on the direct Ollama route.~~ **Resolved
 2026-08-08:** verified in-browser, `POST 127.0.0.1:11434/v1/chat/completions` from
@@ -252,13 +378,19 @@ pnpm typecheck && pnpm typecheck:gen && pnpm typecheck:app   # run these — tes
 pnpm --filter @iconostasis/helper test   # 14
 pnpm --filter @iconostasis/app test      # 11
 pnpm app        # background it — see §0
+pnpm helper     # Local Helper on :47821 — required for Icon and Antiphon
 # optional:
-pnpm helper          # Local Helper on :47821
-pnpm smoke:ollama    # defaults to smollm:135m
+pnpm smoke:provider  # ICONOSTASIS_SMOKE_BASE_URL/_MODEL/_API_KEY; any OpenAI-compat host
 ```
 
+**Driving the full demo without Ollama** (what this Mac has to do): Enter → **M2 demo** →
+select `oracle1` → set `providerInstanceId` to `local-mock` → **Fire Oracle**. To exercise
+the hard spend stop, load `http://localhost:5173/?spendCeiling=100` — two fires land, the
+third is refused, and **+ceiling** in the Providers panel releases it.
+
 **GEN ops in palette:** `GEN/PromptLoom`, `GEN/Oracle`, `GEN/Icon`, `GEN/Antiphon`  
-**Oracle:** set `providerInstanceId` empty to use first capable provider (local-ollama); bump `fire` to invoke.  
+**Oracle:** empty `providerInstanceId` resolves to the first provider — the keyless OpenRouter
+default, so bind a key first or set it to `local-mock`; bump `fire` to invoke.  
 **Perform:** GEN disarmed by default — Arm in HUD; invokes go through same GenRuntime.
 
 **Helper:**
@@ -290,13 +422,19 @@ Antiphon errors on connect while Oracle still works.
 
 | Package | Tests |
 |---|---|
-| engine | 157 |
+| engine | 160 |
 | gen | 40 |
-| helper | 14 |
-| app | 11 |
+| helper | 17 |
+| app | 15 |
 
-*(engine 153 → 157 `genCookSmoke.test.ts`; gen 35 → 40 `bytes.test.ts`; helper 2 → 14
-`mockGen.test.ts`; app 9 → 11 fixture wiring.)*
+*(engine 157 → 160 backdrop port + flash-limiter proxy; helper 14 → 17 mock chat route;
+app 11 → 15 Icon wiring, GEN-reachability guard, BYOK-usability + local-inference-retained
+guards.)*
+
+The app guard is worth keeping: **`evaluator.tick` pull-evaluates from `family === "OUT"`
+only, so a GEN op with no path to a sink never cooks at all.** That has silently disabled
+Oracle once and Icon once. `m2OracleGraph.test.ts` now walks the wire graph and fails if any
+`GEN/*` node cannot reach an `OUT/*` node, rather than trusting the wire list to look right.
 
 ---
 
